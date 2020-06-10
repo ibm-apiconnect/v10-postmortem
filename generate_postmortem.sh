@@ -257,7 +257,11 @@ if [[ $AUTO_DETECT -eq 1 ]]; then
                     esac
 
                     if [[ "${ns_matches}" != *"${ns}"* ]]; then
-                        ns_matches+=" ${ns}"
+                        if [[ ${#ns_matches} -eq 0 ]]; then
+                            ns_matches=$ns
+                        else
+                            ns_matches+=" ${ns}"
+                        fi
                     fi
                 done <<< "$OUTPUT"
             fi
