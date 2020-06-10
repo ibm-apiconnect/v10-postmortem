@@ -1,4 +1,4 @@
-# v10-postmortem-tool
+# v10-postmortem
 With the move to API Connect v10, **helm** is not longer used as part of the deployment process.
 
 
