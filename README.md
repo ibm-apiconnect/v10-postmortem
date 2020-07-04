@@ -16,7 +16,7 @@ sudo -i
 ```
 2.  Download the script using the following command:
 ```shell
-curl -s -o generate_postmortem.sh https://raw.github.ibm.com/cjohnso/v10-postmortem/master/generate_postmortem.sh?token=AAABUGMHPTAG7AA2ZUS6UCK64H4FA
+curl -s -o generate_postmortem.sh https://raw.githubusercontent.com/ibm-apiconnect/v10-postmortem/master/generate_postmortem.sh
 ```
 3.  Add execution permissions to file using the command `chmod +x generate_postmortem.sh`.
 4.  Run the tool using the command `./generate_postmortem.sh --ova`.
@@ -24,7 +24,7 @@ curl -s -o generate_postmortem.sh https://raw.github.ibm.com/cjohnso/v10-postmor
 ### Cloud Pak 4i, Kubernetes, OpenShift
 1.  Download the script using the following command:
 ```shell
-curl -s -o generate_postmortem.sh https://raw.github.ibm.com/cjohnso/v10-postmortem/master/generate_postmortem.sh?token=AAABUGMHPTAG7AA2ZUS6UCK64H4FA
+curl -s -o generate_postmortem.sh https://raw.githubusercontent.com/ibm-apiconnect/v10-postmortem/master/generate_postmortem.sh
 ```
 2.  Add execution permissions to file using the command `chmod +x generate_postmortem.sh`.
 3.  Run the tool using the command `./generate_postmortem.sh`.
