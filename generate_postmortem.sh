@@ -588,7 +588,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
     mkdir -p $K8S_NAMESPACES_STS_DESCRIBE_DATA
 
     #grab cluster configuration, equivalent to "apiconnect-up.yml" which now resides in cluster
-    CLUSTER_LIST=(ManagementCluster ManagementBackup ManagementRestore AnalyticsCluster PortalCluster GatewayCluster)
+    CLUSTER_LIST=(apic ManagementCluster ManagementBackup ManagementRestore ManagamentDBUpgrade AnalyticsCluster PortalCluster GatewayCluster)
     for cluster in ${CLUSTER_LIST[@]}; do
         OUTPUT=`kubectl get -n $NAMESPACE $cluster 2>/dev/null`
         if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
