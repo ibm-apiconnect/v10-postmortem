@@ -15,6 +15,7 @@ for switch in $@; do
             echo -e 'Usage: generate_postmortem.sh {optional: LOG LIMIT}'
             echo -e ""
             echo -e "Available switches:"
+            echo -e "--specific-namespaces:   Target only the listed namespaces for the data collection."
             echo -e "--extra-namespaces:      Extra namespaces separated with commas.  Example:  --extra-namespaces=dev1,dev2,dev3"
             echo -e "--log-limit:             Set the number of lines to collect from each pod logs."
             echo -e "--ova:                   Only set if running inside an OVA deployment."
@@ -22,6 +23,7 @@ for switch in $@; do
             echo -e "--pull-appliance-logs:   Call [apic logs] command then package into archive file."
             echo -e "--performance-check:     Set to run performance checks."
             echo -e "--no-history:            Do not collect user history."
+            echo -e "--collect-secrets:       Collect secrets from targeted namespaces.  Due sensitivity of data, do not use unless requested by support."
             echo -e ""
             echo -e "--diagnostic-all:        Set to enable all diagnostic data."
             echo -e "--diagnostic-manager:    Set to include additional manager specific data."
@@ -66,6 +68,12 @@ for switch in $@; do
                 LOG_LIMIT="--tail=${limit}"
             fi
             ;;
+        *"--specific-namespaces"*)
+            NO_PROMPT=1
+            AUTO_DETECT=0
+            specific_namespaces=`echo "${switch}" | cut -d'=' -f2 | tr ',' ' '`
+            NAMESPACE_LIST="${specific_namespaces}"
+            ;;
         *"--extra-namespaces"*)
             NO_PROMPT=1
             extra_namespaces=`echo "${switch}" | cut -d'=' -f2 | tr ',' ' '`
@@ -83,6 +91,9 @@ for switch in $@; do
         *"--no-prompt"*)
             NO_PROMPT=1
             ;;
+        *"--collect-secrets"*)
+            COLLECT_SECRETS=1
+            ;;   
         *)
             if [[ -z "$DEBUG_SET" ]]; then
                 set +e
@@ -125,7 +136,7 @@ cat << EOF > $1
 <!--  ErrorReport Request -->
 <env:Envelope xmlns:env="http://schemas.xmlsoap.org/soap/envelope/">
   <env:Body>
-    <dp:request xmlns:dp="http://www.datapower.com/schemas/management" domain="apiconnect">
+    <dp:request xmlns:dp="http://www.datapower.com/schemas/management" domain="default">
       <dp:do-action>
         <ErrorReport/>
       </dp:do-action>
@@ -155,7 +166,7 @@ ARCHIVE_FILE=""
 ERROR_REPORT_SLEEP_TIMEOUT=30
 
 MIN_DOCKER_VERSION="17.03"
-MIN_KUBELET_VERSION="1.15"
+MIN_KUBELET_VERSION="1.17"
 
 COLOR_YELLOW=`tput setaf 3`
 COLOR_WHITE=`tput setaf 7`
@@ -540,6 +551,10 @@ for NAMESPACE in $NAMESPACE_LIST; do
     K8S_NAMESPACES_SA_DATA="${K8S_NAMESPACES_SPECIFIC}/service_accounts"
     K8S_NAMESPACES_SA_DESCRIBE_DATA="${K8S_NAMESPACES_SA_DATA}/describe"
 
+    K8S_NAMESPACES_SECRET_DATA="${K8S_NAMESPACES_SPECIFIC}/secrets"
+    K8S_NAMESPACES_SECRET_DESCRIBE_DATA="${K8S_NAMESPACES_SECRET_DATA}/describe"
+    K8S_NAMESPACES_SECRET_YAML_OUTPUT="${K8S_NAMESPACES_SECRET_DATA}/yaml"
+
     K8S_NAMESPACES_SERVICE_DATA="${K8S_NAMESPACES_SPECIFIC}/services"
     K8S_NAMESPACES_SERVICE_DESCRIBE_DATA="${K8S_NAMESPACES_SERVICE_DATA}/describe"
     K8S_NAMESPACES_SERVICE_YAML_OUTPUT="${K8S_NAMESPACES_SERVICE_DATA}/yaml"
@@ -582,13 +597,16 @@ for NAMESPACE in $NAMESPACE_LIST; do
 
     mkdir -p $K8S_NAMESPACES_SA_DESCRIBE_DATA
 
+    mkdir -p $K8S_NAMESPACES_SECRET_DESCRIBE_DATA
+    mkdir -p $K8S_NAMESPACES_SECRET_YAML_OUTPUT
+
     mkdir -p $K8S_NAMESPACES_SERVICE_DESCRIBE_DATA
     mkdir -p $K8S_NAMESPACES_SERVICE_YAML_OUTPUT
 
     mkdir -p $K8S_NAMESPACES_STS_DESCRIBE_DATA
 
     #grab cluster configuration, equivalent to "apiconnect-up.yml" which now resides in cluster
-    CLUSTER_LIST=(ManagementCluster ManagementBackup ManagementRestore AnalyticsCluster PortalCluster GatewayCluster)
+    CLUSTER_LIST=(apic ManagementCluster ManagementBackup ManagementRestore ManagamentDBUpgrade AnalyticsCluster PortalCluster GatewayCluster)
     for cluster in ${CLUSTER_LIST[@]}; do
         OUTPUT=`kubectl get -n $NAMESPACE $cluster 2>/dev/null`
         if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
@@ -605,10 +623,10 @@ for NAMESPACE in $NAMESPACE_LIST; do
     #grab lists
     OUTPUT=`kubectl get events -n $NAMESPACE 2>/dev/null`
     [[ $? -ne 0 || ${#OUTPUT} -eq 0 ]] ||  echo "$OUTPUT" > "${K8S_NAMESPACES_LIST_DATA}/events.out"
-    OUTPUT=`kubectl get secrets -n $NAMESPACE 2>/dev/null`
-    [[ $? -ne 0 || ${#OUTPUT} -eq 0 ]] ||  echo "$OUTPUT" > "${K8S_NAMESPACES_LIST_DATA}/secrets.out"
     OUTPUT=`kubectl get hpa -n $NAMESPACE 2>/dev/null`
     [[ $? -ne 0 || ${#OUTPUT} -eq 0 ]] ||  echo "$OUTPUT" > "${K8S_NAMESPACES_LIST_DATA}/hpa.out"
+
+    #grab ingress
     OUTPUT1=`kubectl get ingress -n $NAMESPACE 2>/dev/null`
     if [[ $? -eq 0 && ${#OUTPUT1} -gt 0 ]]; then
         echo "$OUTPUT1" > "${K8S_NAMESPACES_LIST_DATA}/ingress.out"
@@ -849,8 +867,12 @@ for NAMESPACE in $NAMESPACE_LIST; do
                 GATEWAY_DIAGNOSTIC_DATA="${K8S_NAMESPACES_POD_DIAGNOSTIC_DATA}/gateway/${pod}"
                 mkdir -p $GATEWAY_DIAGNOSTIC_DATA
 
-                #grab gwd-log.log
-                kubectl cp -n $NAMESPACE "${pod}:/opt/ibm/datapower/drouter/temporary/log/apiconnect/gwd-log.log" "${GATEWAY_DIAGNOSTIC_DATA}/gwd-log.log" &>/dev/null
+                #grab all "gwd-log.log" files
+                GWD_FILE_LIST=`kubectl exec -it -n $NAMESPACE ${pod} -- find /opt/ibm/datapower/drouter/temporary/log/apiconnect/ -name "gwd-log.log*`
+                echo "${GWD_FILE_LIST}" | while read fullpath; do 
+                    filename="$(basename $fullpath)"
+                    kubectl cp -n $NAMESPACE ${pod}:${fullpath} "${GATEWAY_DIAGNOSTIC_DATA}/${filename}" &>/dev/null
+                done
 
                 #open SOMA port to localhost
                 kubectl port-forward ${pod} 5550:5550 -n ${NAMESPACE} 1>/dev/null 2>/dev/null &
@@ -1082,6 +1104,30 @@ for NAMESPACE in $NAMESPACE_LIST; do
         done <<< "$OUTPUT"
     else
         rm -fr $K8S_NAMESPACES_SA_DATA
+    fi
+
+    #grab secrets
+    OUTPUT=`kubectl get secrets -n $NAMESPACE 2>/dev/null`
+    if [[ $? -eq 0 && ${#OUTPUT1} -gt 0 ]]; then
+        echo "$OUTPUT" > "${K8S_NAMESPACES_SECRET_DATA}/secrets.out"
+
+        if [[ $COLLECT_SECRETS -eq 1 ]]; then
+            while read line; do
+                secret=`echo "$line" | cut -d' ' -f1`
+
+                kubectl describe secret $secret -n $NAMESPACE &>"${K8S_NAMESPACES_SECRET_DESCRIBE_DATA}/${secret}.out"
+                [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_SECRET_DESCRIBE_DATA}/${secret}.out"
+
+                kubectl get secret $secret -o yaml -n $NAMESPACE &>"${K8S_NAMESPACES_SECRET_YAML_OUTPUT}/${secret}.yaml"
+                [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_SECRET_YAML_OUTPUT}/${secret}.yaml"
+
+            done <<< "$OUTPUT"
+        else
+            rm -fr $K8S_NAMESPACES_SECRET_DESCRIBE_DATA
+            rm -fr $K8S_NAMESPACES_SECRET_YAML_OUTPUT
+        fi
+    else
+        rm -fr $K8S_NAMESPACES_SECRET_DATA
     fi
 
     #grab service data
