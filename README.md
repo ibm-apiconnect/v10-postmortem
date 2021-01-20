@@ -50,6 +50,6 @@ Enable the following if troubleshooting an issue for the following subsystems:
 -  Open an issue to submit any feedback
 -  Problem with the script?  Run the following command:
 ```shell
-./generate_postmortem.sh --debug &>debug.log
+./generate_postmortem.sh --debug 2>&1 | tee /tmp/debug.log
 ```
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;then open an issue on the github page attaching the `debug.log` file.
