@@ -515,6 +515,9 @@ for NAMESPACE in $NAMESPACE_LIST; do
     K8S_NAMESPACES_PVC_DATA="${K8S_NAMESPACES_SPECIFIC}/pvc"
     K8S_NAMESPACES_PVC_DESCRIBE_DATA="${K8S_NAMESPACES_PVC_DATA}/describe"
 
+    K8S_NAMESPACES_PGTASKS_DATA="${K8S_NAMESPACES_SPECIFIC}/pgtasks"
+    K8S_NAMESPACES_PGTASKS_DESCRIBE_DATA="${K8S_NAMESPACES_PGTASKS_DATA}/describe"
+
     K8S_NAMESPACES_REPLICASET_DATA="${K8S_NAMESPACES_SPECIFIC}/replicasets"
     K8S_NAMESPACES_REPLICASET_YAML_OUTPUT="${K8S_NAMESPACES_REPLICASET_DATA}/yaml"
     K8S_NAMESPACES_REPLICASET_DESCRIBE_DATA="${K8S_NAMESPACES_REPLICASET_DATA}/describe"
@@ -564,6 +567,8 @@ for NAMESPACE in $NAMESPACE_LIST; do
     mkdir -p $K8S_NAMESPACES_POD_LOG_DATA
 
     mkdir -p $K8S_NAMESPACES_PVC_DESCRIBE_DATA
+
+    mkdir -p $K8S_NAMESPACES_PGTASKS_DESCRIBE_DATA
 
     mkdir -p $K8S_NAMESPACES_REPLICASET_YAML_OUTPUT
     mkdir -p $K8S_NAMESPACES_REPLICASET_DESCRIBE_DATA
@@ -714,6 +719,19 @@ for NAMESPACE in $NAMESPACE_LIST; do
         rm -fr $K8S_NAMESPACES_JOB_DATA
     fi
 
+    #grab pgtasks data
+    OUTPUT=`kubectl get pgtasks -n $NAMESPACE 2>/dev/null`
+    if [[ $? -eq 0 && ${#OUTPUT} -gt 0  ]]; then
+        echo "$OUTPUT" > "${K8S_NAMESPACES_PGTASKS_DATA}/pgtasks.out"
+        while read line; do
+            pgtask=`echo "$line" | cut -d' ' -f1`
+            kubectl describe pgtask $pgtask -n $NAMESPACE &>"${K8S_NAMESPACES_PGTASKS_DESCRIBE_DATA}/${pgtask}.out"
+            [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_PGTASKS_DESCRIBE_DATA}/${pgtask}.out"
+        done <<< "$OUTPUT"
+    else
+        rm -fr $K8S_NAMESPACES_PGTASKS_DATA
+    fi
+
     #grab pod data
     NSLOOKUP_COMPLETE=0
     OUTPUT=`kubectl get pods -n $NAMESPACE -o wide 2>/dev/null`
@@ -756,6 +774,9 @@ for NAMESPACE in $NAMESPACE_LIST; do
                     CHECK_INGRESS=1
                     case $pod in
                         *"${SUBSYS_MANAGER}"*|*"postgres"*)
+                            if [[ "${pod}" == *"postgres-backrest-shared-repo"* ]]; then
+                                IS_PGDATA=1
+                            fi
                             SUBFOLDER="manager"
                             ;;
                         *"${SUBSYS_ANALYTICS}"*)
