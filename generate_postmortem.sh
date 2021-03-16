@@ -236,6 +236,12 @@ if [[ $AUTO_DETECT -eq 1 ]]; then
     SUBSYS_GATEWAY_V5="ISNOTSET"
     SUBSYS_GATEWAY_V6="ISNOTSET"
 
+    SUBSYS_MANAGER_COUNT=0
+    SUBSYS_ANALYTICS_COUNT=0
+    SUBSYS_PORTAL_COUNT=0
+    SUBSYS_GATEWAY_V5_COUNT=0
+    SUBSYS_GATEWAY_V6_COUNT=0
+
     CLUSTER_LIST=(ManagementCluster AnalyticsCluster PortalCluster GatewayCluster)
     ns_matches=""
 
@@ -251,19 +257,44 @@ if [[ $AUTO_DETECT -eq 1 ]]; then
                     
                     case $cluster in
                         "ManagementCluster")
-                            SUBSYS_MANAGER=$name
+                            if [[ ${#SUBSYS_MANAGER} -eq 0 ]]; then
+                                SUBSYS_MANAGER=$name
+                            else
+                                SUBSYS_MANAGER+=" ${name}"
+                            fi
+                            ((SUBSYS_MANAGER_COUNT=SUBSYS_MANAGER_COUNT+1))
                         ;;
                         "AnalyticsCluster")
-                            SUBSYS_ANALYTICS=$name
+                            if [[ ${#SUBSYS_ANALYTICS} -eq 0 ]]; then
+                                SUBSYS_ANALYTICS=$name
+                            else
+                                SUBSYS_ANALYTICS+=" ${name}"
+                            fi
+                            ((SUBSYS_ANALYTICS_COUNT=SUBSYS_ANALYTICS_COUNT+1))
                         ;;
                         "PortalCluster")
-                            SUBSYS_PORTAL=$name
+                            if [[ ${#SUBSYS_PORTAL} -eq 0 ]]; then
+                                SUBSYS_PORTAL=$name
+                            else
+                                SUBSYS_PORTAL+=" ${name}"
+                            fi
+                            ((SUBSYS_PORTAL_COUNT=SUBSYS_PORTAL_COUNT+1))
                         ;;
                         "GatewayCluster")
                             if [[ "$name" == *"v5"* ]]; then
-                                SUBSYS_GATEWAY_V5=$name
+                                if [[ ${#SUBSYS_GATEWAY_V5} -eq 0 ]]; then
+                                    SUBSYS_GATEWAY_V5=$name
+                                else
+                                    SUBSYS_GATEWAY_V5+=" ${name}"
+                                fi
+                                ((SUBSYS_GATEWAY_V5_COUNT=SUBSYS_GATEWAY_V5_COUNT+1))
                             else
-                                SUBSYS_GATEWAY_V6=$name
+                                if [[ ${#SUBSYS_GATEWAY_V6} -eq 0 ]]; then
+                                    SUBSYS_GATEWAY_V6=$name
+                                else
+                                    SUBSYS_GATEWAY_V6+=" ${name}"
+                                fi
+                                ((SUBSYS_GATEWAY_V6_COUNT=SUBSYS_GATEWAY_V6_COUNT+1))
                             fi
                         ;;
                     esac
@@ -774,9 +805,6 @@ for NAMESPACE in $NAMESPACE_LIST; do
                     CHECK_INGRESS=1
                     case $pod in
                         *"${SUBSYS_MANAGER}"*|*"postgres"*)
-                            if [[ "${pod}" == *"postgres-backrest-shared-repo"* ]]; then
-                                IS_PGDATA=1
-                            fi
                             SUBFOLDER="manager"
                             ;;
                         *"${SUBSYS_ANALYTICS}"*)
@@ -799,7 +827,44 @@ for NAMESPACE in $NAMESPACE_LIST; do
                             SUBFOLDER="operator"
                             ;;
                         *)
-                            SUBFOLDER="other"
+                            #check for multiple subsystems
+                            if [[ SUBSYS_MANAGER_COUNT -gt 1 ]]; then
+                                for s in $SUBSYS_MANAGER; do
+                                    if [[ "${pod}" == *"${s}"* ]]; then
+                                        SUBFOLDER="manager"
+                                    fi
+                                done
+                            elif [[ SUBSYS_ANALYTICS_COUNT -gt 1 ]]; then
+                                for s in $SUBSYS_ANALYTICS; do
+                                    if [[ "${pod}" == *"${s}"* ]]; then
+                                        SUBFOLDER="analytics"
+                                        IS_ANALYTICS=1
+                                    fi
+                                done
+                            elif [[ SUBSYS_PORTAL_COUNT -gt 1 ]]; then
+                                for s in $SUBSYS_PORTAL; do
+                                    if [[ "${pod}" == *"${s}"* ]]; then
+                                        SUBFOLDER="portal"
+                                        IS_PORTAL=1
+                                    fi
+                                done
+                            elif [[ SUBSYS_GATEWAY_V5_COUNT -gt 1 ]]; then
+                                for s in $SUBSYS_GATEWAY_V5; do
+                                    if [[ "${pod}" == *"${s}"* ]]; then
+                                        SUBFOLDER="gateway"
+                                        IS_GATEWAY=1
+                                    fi
+                                done
+                            elif [[ SUBSYS_GATEWAY_V6_COUNT -gt 1 ]]; then
+                                for s in $SUBSYS_GATEWAY_V6; do
+                                    if [[ "${pod}" == *"${s}"* ]]; then
+                                        SUBFOLDER="gateway"
+                                        IS_GATEWAY=1
+                                    fi
+                                done
+                            else
+                                SUBFOLDER="other"
+                            fi
                     esac
 
                     DESCRIBE_TARGET_PATH="${K8S_NAMESPACES_POD_DESCRIBE_DATA}/${SUBFOLDER}"
