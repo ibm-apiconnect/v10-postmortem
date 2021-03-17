@@ -107,6 +107,10 @@ if [[ -z "$LOG_LIMIT" ]]; then
     LOG_LIMIT=""
 fi
 
+if [[ -z "$SPECIFIC_NAMESPACES" ]]; then
+    SPECIFIC_NAMESPACES=0
+fi
+
 #====================================== Confirm pre-reqs and init variables ======================================
 #------------------------------- Make sure all necessary commands exists ------------------------------
 which kubectl &> /dev/null
@@ -257,7 +261,7 @@ if [[ $AUTO_DETECT -eq 1 ]]; then
                     
                     case $cluster in
                         "ManagementCluster")
-                            if [[ ${#SUBSYS_MANAGER} -eq 0 ]]; then
+                            if [[ ${SUBSYS_MANAGER} == "ISNOTSET" ]]; then
                                 SUBSYS_MANAGER=$name
                             else
                                 SUBSYS_MANAGER+=" ${name}"
@@ -265,7 +269,7 @@ if [[ $AUTO_DETECT -eq 1 ]]; then
                             ((SUBSYS_MANAGER_COUNT=SUBSYS_MANAGER_COUNT+1))
                         ;;
                         "AnalyticsCluster")
-                            if [[ ${#SUBSYS_ANALYTICS} -eq 0 ]]; then
+                            if [[ ${SUBSYS_ANALYTICS} == "ISNOTSET" ]]; then
                                 SUBSYS_ANALYTICS=$name
                             else
                                 SUBSYS_ANALYTICS+=" ${name}"
@@ -273,7 +277,7 @@ if [[ $AUTO_DETECT -eq 1 ]]; then
                             ((SUBSYS_ANALYTICS_COUNT=SUBSYS_ANALYTICS_COUNT+1))
                         ;;
                         "PortalCluster")
-                            if [[ ${#SUBSYS_PORTAL} -eq 0 ]]; then
+                            if [[ ${SUBSYS_PORTAL} == "ISNOTSET" ]]; then
                                 SUBSYS_PORTAL=$name
                             else
                                 SUBSYS_PORTAL+=" ${name}"
@@ -282,14 +286,14 @@ if [[ $AUTO_DETECT -eq 1 ]]; then
                         ;;
                         "GatewayCluster")
                             if [[ "$name" == *"v5"* ]]; then
-                                if [[ ${#SUBSYS_GATEWAY_V5} -eq 0 ]]; then
+                                if [[ ${SUBSYS_GATEWAY_V5} == "ISNOTSET" ]]; then
                                     SUBSYS_GATEWAY_V5=$name
                                 else
                                     SUBSYS_GATEWAY_V5+=" ${name}"
                                 fi
                                 ((SUBSYS_GATEWAY_V5_COUNT=SUBSYS_GATEWAY_V5_COUNT+1))
                             else
-                                if [[ ${#SUBSYS_GATEWAY_V6} -eq 0 ]]; then
+                                if [[ ${SUBSYS_GATEWAY_V6} == "ISNOTSET" ]]; then
                                     SUBSYS_GATEWAY_V6=$name
                                 else
                                     SUBSYS_GATEWAY_V6+=" ${name}"
@@ -779,6 +783,11 @@ for NAMESPACE in $NAMESPACE_LIST; do
             IS_PORTAL=0
             IS_ANALYTICS=0
 
+            subManager=""
+            subAnalytics=""
+            subPortal=""
+            subGateway=""
+
             CHECK_INGRESS=0
 
             case $NAMESPACE in
@@ -806,16 +815,29 @@ for NAMESPACE in $NAMESPACE_LIST; do
                     case $pod in
                         *"${SUBSYS_MANAGER}"*|*"postgres"*)
                             SUBFOLDER="manager"
+                            subManager=$SUBSYS_MANAGER
                             ;;
                         *"${SUBSYS_ANALYTICS}"*)
                             SUBFOLDER="analytics"
+                            subAnalytics=$SUBSYS_ANALYTICS
                             IS_ANALYTICS=1
                             ;;
                         *"${SUBSYS_PORTAL}"*)
                             SUBFOLDER="portal"
+                            subPortal=$SUBSYS_PORTAL
                             IS_PORTAL=1
                             ;;
-                        *"${SUBSYS_GATEWAY_V5}"*|"${SUBSYS_GATEWAY_V6}"*|*"datapower"*)
+                        *"${SUBSYS_GATEWAY_V5}"*)
+                            SUBFOLDER="gateway"
+                            subGateway=$SUBSYS_GATEWAY_V5
+                            IS_GATEWAY=1
+                            ;;
+                        "${SUBSYS_GATEWAY_V6}"*)
+                            SUBFOLDER="gateway"
+                            subGateway=$SUBSYS_GATEWAY_V6
+                            IS_GATEWAY=1
+                            ;;
+                        *"datapower"*)
                             SUBFOLDER="gateway"
                             IS_GATEWAY=1
                             ;;
@@ -830,35 +852,40 @@ for NAMESPACE in $NAMESPACE_LIST; do
                             #check for multiple subsystems
                             if [[ SUBSYS_MANAGER_COUNT -gt 1 ]]; then
                                 for s in $SUBSYS_MANAGER; do
-                                    if [[ "${pod}" == *"${s}"* ]]; then
+                                    if [[ "${pod}" == "${s}-"* ]]; then
                                         SUBFOLDER="manager"
+                                        subManager=$s
                                     fi
                                 done
                             elif [[ SUBSYS_ANALYTICS_COUNT -gt 1 ]]; then
                                 for s in $SUBSYS_ANALYTICS; do
-                                    if [[ "${pod}" == *"${s}"* ]]; then
+                                    if [[ "${pod}" == "${s}-"* ]]; then
                                         SUBFOLDER="analytics"
+                                        subAnalytics=$s
                                         IS_ANALYTICS=1
                                     fi
                                 done
                             elif [[ SUBSYS_PORTAL_COUNT -gt 1 ]]; then
                                 for s in $SUBSYS_PORTAL; do
-                                    if [[ "${pod}" == *"${s}"* ]]; then
+                                    if [[ "${pod}" == "${s}-"* ]]; then
                                         SUBFOLDER="portal"
+                                        subPortal=$s
                                         IS_PORTAL=1
                                     fi
                                 done
                             elif [[ SUBSYS_GATEWAY_V5_COUNT -gt 1 ]]; then
                                 for s in $SUBSYS_GATEWAY_V5; do
-                                    if [[ "${pod}" == *"${s}"* ]]; then
+                                    if [[ "${pod}" == "${s}-"* ]]; then
                                         SUBFOLDER="gateway"
+                                        subGateway=$s
                                         IS_GATEWAY=1
                                     fi
                                 done
                             elif [[ SUBSYS_GATEWAY_V6_COUNT -gt 1 ]]; then
                                 for s in $SUBSYS_GATEWAY_V6; do
-                                    if [[ "${pod}" == *"${s}"* ]]; then
+                                    if [[ "${pod}" == "${s}-"* ]]; then
                                         SUBFOLDER="gateway"
+                                        subGateway=$s
                                         IS_GATEWAY=1
                                     fi
                                 done
@@ -880,7 +907,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
             fi
 
             if [[ $NSLOOKUP_COMPLETE -eq 0 && $CHECK_INGRESS -eq 1 ]]; then
-                if [[ ( "${pod}" == "${SUBSYS_MANAGER}-apim"* && "${pod}" != *"initschema"* ) || ( "${pod}" == "${SUBSYS_ANALYTICS}-client"* ) || ( "${pod}" == "${SUBSYS_PORTAL}-"*"www"* ) ]]; then
+                if [[ ( "${pod}" == "${subManager}-apim"* && "${pod}" != *"initschema"* ) || ( "${pod}" == "${subAnalytics}-client"* ) || ( "${pod}" == "${subPortal}-"*"www"* ) ]]; then
                     PERFORM_NSLOOKUP=1
                 fi
                 
@@ -1233,19 +1260,40 @@ for NAMESPACE in $NAMESPACE_LIST; do
         for container in ${CONTAINERS[@]}; do
             cd $TARGET_DIRECTORY
 
-            TRANSFORM_DIRECTORY="${TARGET_DIRECTORY}/transformed/${container}"
-            INTERLACED_LOG_FILE="${TRANSFORM_DIRECTORY}/logs_interlaced.out"
+            if [[ SUBSYS_PORTAL_COUNT -gt 1 ]]; then
+                for s in $SUBSYS_PORTAL; do
+                    TRANSFORM_DIRECTORY="${TARGET_DIRECTORY}/transformed/${s}/${container}"
+                    INTERLACED_LOG_FILE="${TRANSFORM_DIRECTORY}/logs_interlaced.out"
 
-            mkdir -p $TRANSFORM_DIRECTORY
+                    mkdir -p $TRANSFORM_DIRECTORY
 
-            LOG_FILES=`ls -1 $TARGET_DIRECTORY | egrep "${SUBSYS_PORTAL}.*www.*${container}"`
-            grep . $LOG_FILES | sed 's/:\[/[ /' | sort -k5,6 >$INTERLACED_LOG_FILE
+                    LOG_FILES=`ls -1 $TARGET_DIRECTORY | egrep "${s}.*www.*${container}"`
+                    grep . $LOG_FILES | sed 's/:\[/[ /' | sort -k5,6 >$INTERLACED_LOG_FILE
+                    
+                    cd $tmpPortalPath
+                    OUTPUT=`sed -E "s/\[([ a-z0-9_\-]*) std(out|err)].*/\1/" $INTERLACED_LOG_FILE | sed 's/^ *//' | awk -F ' ' '{print $NF}' | sort -u`
+                    while read tag; do
+                        grep "\[ *$tag " $INTERLACED_LOG_FILE >"${TRANSFORM_DIRECTORY}/${tag}.out"
+                    done <<< "$OUTPUT"
 
-            cd $TRANSFORM_DIRECTORY
-            OUTPUT=`sed -E "s/\[([ a-z0-9_\-]*) std(out|err)].*/\1/" $INTERLACED_LOG_FILE | sed 's/^ *//' | awk -F ' ' '{print $NF}' | sort -u`
-            while read tag; do
-                grep "\[ *$tag " $INTERLACED_LOG_FILE >"${TRANSFORM_DIRECTORY}/${tag}.out"
-            done <<< "$OUTPUT"
+                    rm -f $INTERLACED_LOG_FILE
+                done
+            else
+                TRANSFORM_DIRECTORY="${TARGET_DIRECTORY}/transformed/${container}"
+                INTERLACED_LOG_FILE="${TRANSFORM_DIRECTORY}/logs_interlaced.out"
+                mkdir -p $TRANSFORM_DIRECTORY
+
+                LOG_FILES=`ls -1 $TARGET_DIRECTORY | egrep "${SUBSYS_PORTAL}.*www.*${container}"`
+                grep . $LOG_FILES | sed 's/:\[/[ /' | sort -k5,6 >$INTERLACED_LOG_FILE
+
+                cd $TRANSFORM_DIRECTORY
+                OUTPUT=`sed -E "s/\[([ a-z0-9_\-]*) std(out|err)].*/\1/" $INTERLACED_LOG_FILE | sed 's/^ *//' | awk -F ' ' '{print $NF}' | sort -u`
+                while read tag; do
+                    grep "\[ *$tag " $INTERLACED_LOG_FILE >"${TRANSFORM_DIRECTORY}/${tag}.out"
+                done <<< "$OUTPUT"
+
+                rm -f $INTERLACED_LOG_FILE
+            fi
         done
     fi
     #^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
