@@ -945,11 +945,36 @@ for NAMESPACE in $NAMESPACE_LIST; do
 
             #grab postgres data
             if [[ $DIAG_MANAGER -eq 1 && "$pod" == *"postgres"* && ! "$pod" =~ (backrest|pgbouncer|stanza|operator) ]]; then
-                target_dir="${K8S_NAMESPACES_POD_DIAGNOSTIC_DATA}/postgres/${pod}-debug"
+                target_dir="${K8S_NAMESPACES_POD_DIAGNOSTIC_DATA}/postgres/${pod}-pglogs"
+                health_dir="${K8S_NAMESPACES_POD_DIAGNOSTIC_DATA}/postgres/${pod}-health-stats"
 
                 mkdir -p $target_dir
+                mkdir -p $health_dir
+
+                #pglogs
                 POSTGRES_CLUSTER_NAME=`echo $pod | grep -o '[A-Za-z0-9\-]*postgres' 2>/dev/null`
                 kubectl cp -n $NAMESPACE "${pod}:/pgdata/${POSTGRES_CLUSTER_NAME}/pglogs" $target_dir &>/dev/null
+
+                #df
+                DB_DF_OUTPUT=`kubectl exec -n $NAMESPACE ${pod} -c database -- df -h 2>"/dev/null"`
+                echo "$DB_DF_OUTPUT" > $health_dir/df.out
+                
+                #pg wal dir count
+                PG_WAL_DIR_COUNT=`kubectl exec -n $NAMESPACE ${pod} -c database -- ls -lrt /pgwal/${POSTGRES_CLUSTER_NAME}-wal/ | wc -l 2>"/dev/null"`
+                echo "$PG_WAL_DIR_COUNT" > $health_dir/pgwal-dir-count.out
+
+                #pg wal dir history data
+                PG_WAL_HISTORY_LIST=`kubectl exec -n $NAMESPACE ${pod} -c database -- ls -lrt /pgwal/${POSTGRES_CLUSTER_NAME}-wal/ | grep history 2>"/dev/null"`
+                echo "$PG_WAL_HISTORY_LIST" > $health_dir/pgwal-history-list.out
+
+                # pgdata du
+                PG_DATA_DU_OUTPUT=`kubectl exec -n $NAMESPACE ${pod} -c database -- du -sh /pgdata/${POSTGRES_CLUSTER_NAME}/  2>"/dev/null"`
+                echo "$PG_DATA_DU_OUTPUT" > $health_dir/pgdata-du.out
+
+                # pgwal du
+                PG_WAL_DU_OUTPUT=`kubectl exec -n $NAMESPACE ${pod} -c database -- du -sh /pgwal/${POSTGRES_CLUSTER_NAME}-wal/  2>"/dev/null"`
+                echo "$PG_WAL_DU_OUTPUT" > $health_dir/pgwal-du.out
+
             fi
 
             #grab gateway diagnostic data
