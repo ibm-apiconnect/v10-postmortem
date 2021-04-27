@@ -541,6 +541,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
 
     K8S_NAMESPACES_JOB_DATA="${K8S_NAMESPACES_SPECIFIC}/jobs"
     K8S_NAMESPACES_JOB_DESCRIBE_DATA="${K8S_NAMESPACES_JOB_DATA}/describe"
+    K8S_NAMESPACES_JOB_YAML_OUTPUT="${K8S_NAMESPACES_JOB_DATA}/yaml"
     
     K8S_NAMESPACES_POD_DATA="${K8S_NAMESPACES_SPECIFIC}/pods"
     K8S_NAMESPACES_POD_DESCRIBE_DATA="${K8S_NAMESPACES_POD_DATA}/describe"
@@ -749,6 +750,9 @@ for NAMESPACE in $NAMESPACE_LIST; do
             job=`echo "$line" | cut -d' ' -f1`
             kubectl describe job $job -n $NAMESPACE &> "${K8S_NAMESPACES_JOB_DESCRIBE_DATA}/${job}.out"
             [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_JOB_DESCRIBE_DATA}/${job}.out"
+
+            kubectl get job $job -o yaml -n $NAMESPACE &>"${K8S_NAMESPACES_JOB_YAML_OUTPUT}/${job}.out"
+            [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_JOB_YAML_OUTPUT}/${job}.out"
         done <<< "$OUTPUT"
     else
         rm -fr $K8S_NAMESPACES_JOB_DATA
