@@ -979,8 +979,8 @@ for NAMESPACE in $NAMESPACE_LIST; do
                 mkdir -p $target_dir
                 mkdir -p $health_dir
 
-                POSTGRES_PGLOGS_NAME=`kubectl exec -n $NAMESPACE ${pod} -- ls -1 /pgdata | grep -v lost`
-                POSTGRES_PGWAL_NAME=`kubectl exec -n $NAMESPACE ${pod} -- ls -1 /pgwal | grep -v lost`
+                POSTGRES_PGLOGS_NAME=`kubectl exec -n $NAMESPACE ${pod} -- ls -1 /pgdata | grep -v lost 2>"/dev/null"`
+                POSTGRES_PGWAL_NAME=`kubectl exec -n $NAMESPACE ${pod} -- ls -1 /pgwal | grep -v lost 2>"/dev/null"`
 
                 #pglogs
                       
