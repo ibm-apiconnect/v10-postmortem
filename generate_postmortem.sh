@@ -25,6 +25,7 @@ for switch in $@; do
             echo -e "--performance-check:     Set to run performance checks."
             echo -e "--no-history:            Do not collect user history."
             echo -e "--collect-secrets:       Collect secrets from targeted namespaces.  Due to sensitivity of data, do not use unless requested by support."
+            echo -e "--collect-crunchy:       Collect Crunchy mustgather."
             echo -e ""
             echo -e "--diagnostic-all:        Set to enable all diagnostic data."
             echo -e "--diagnostic-manager:    Set to include additional manager specific data."
@@ -94,7 +95,16 @@ for switch in $@; do
             ;;
         *"--collect-secrets"*)
             COLLECT_SECRETS=1
-            ;;   
+            ;;
+        *"--collect-crunchy"*)
+            COLLECT_CRUNCHY=1
+            SCRIPT_LOCATION="`pwd`/crunchy_gather.py"
+            if [[ ! -f $SCRIPT_LOCATION ]]; then
+                echo -e "Unable to locate script [crunchy_gather.py] in current directory.  Download from GitHub repository.  Exiting..."
+                exit 1
+            fi
+            chmod +x $SCRIPT_LOCATION
+            ;;
         *)
             if [[ -z "$DEBUG_SET" ]]; then
                 set +e
@@ -527,6 +537,8 @@ for NAMESPACE in $NAMESPACE_LIST; do
     K8S_NAMESPACES_CRONJOB_DATA="${K8S_NAMESPACES_SPECIFIC}/cronjobs"
     K8S_NAMESPACES_CRONJOB_DESCRIBE_DATA="${K8S_NAMESPACES_CRONJOB_DATA}/describe"
 
+    K8S_NAMESPACES_CRUNCHY_DATA="${K8S_NAMESPACES_SPECIFIC}/crunchy"
+
     K8S_NAMESPACES_DAEMONSET_DATA="${K8S_NAMESPACES_SPECIFIC}/daemonsets"
     K8S_NAMESPACES_DAEMONSET_YAML_OUTPUT="${K8S_NAMESPACES_DAEMONSET_DATA}/yaml"
     K8S_NAMESPACES_DAEMONSET_DESCRIBE_DATA="${K8S_NAMESPACES_DAEMONSET_DATA}/describe"
@@ -588,6 +600,8 @@ for NAMESPACE in $NAMESPACE_LIST; do
 
     mkdir -p $K8S_NAMESPACES_CRONJOB_DESCRIBE_DATA
 
+    mkdir -p $K8S_NAMESPACES_CRUNCHY_DATA
+
     mkdir -p $K8S_NAMESPACES_DAEMONSET_YAML_OUTPUT
     mkdir -p $K8S_NAMESPACES_DAEMONSET_DESCRIBE_DATA
 
@@ -625,7 +639,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
     mkdir -p $K8S_NAMESPACES_STS_DESCRIBE_DATA
 
     #grab cluster configuration, equivalent to "apiconnect-up.yml" which now resides in cluster
-    CLUSTER_LIST=(apic ManagementCluster ManagementBackup ManagementRestore ManagamentDBUpgrade AnalyticsCluster PortalCluster GatewayCluster)
+    CLUSTER_LIST=(apic ManagementCluster ManagementBackup ManagementRestore ManagementDBUpgrade AnalyticsCluster PortalCluster GatewayCluster)
     for cluster in ${CLUSTER_LIST[@]}; do
         OUTPUT=`kubectl get -n $NAMESPACE $cluster 2>/dev/null`
         if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
@@ -638,6 +652,11 @@ for NAMESPACE in $NAMESPACE_LIST; do
             [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_CLUSTER_YAML_OUTPUT}/${cluster}.yaml"
         fi
     done
+
+    #grab crunchy mustgather
+    if [[ $COLLECT_CRUNCHY -eq 1 && "$NAMESPACE" != "kube-system" ]]; then
+        $CURRENT_PATH/crunchy_gather.py -n $NAMESPACE -o $K8S_NAMESPACES_CRUNCHY_DATA &> "${K8S_NAMESPACES_CRUNCHY_DATA}/output.log"
+    fi
 
     #grab lists
     OUTPUT=`kubectl get events -n $NAMESPACE 2>/dev/null`
@@ -956,30 +975,32 @@ for NAMESPACE in $NAMESPACE_LIST; do
                 mkdir -p $target_dir
                 mkdir -p $health_dir
 
+                POSTGRES_PGLOGS_NAME=`kubectl exec -n $NAMESPACE ${pod} -- ls -1 /pgdata | grep -v lost`
+                POSTGRES_PGWAL_NAME=`kubectl exec -n $NAMESPACE ${pod} -- ls -1 /pgwal | grep -v lost`
+
                 #pglogs
-                POSTGRES_CLUSTER_NAME=`echo $pod | grep -o '[A-Za-z0-9\-]*postgres' 2>/dev/null`
-                kubectl cp -n $NAMESPACE "${pod}:/pgdata/${POSTGRES_CLUSTER_NAME}/pglogs" $target_dir &>/dev/null
+                      
+                kubectl cp -n $NAMESPACE "${pod}:/pgdata/${POSTGRES_PGLOGS_NAME}/pglogs" $target_dir &>/dev/null
 
                 #df
                 DB_DF_OUTPUT=`kubectl exec -n $NAMESPACE ${pod} -c database -- df -h 2>"/dev/null"`
                 echo "$DB_DF_OUTPUT" > $health_dir/df.out
                 
                 #pg wal dir count
-                PG_WAL_DIR_COUNT=`kubectl exec -n $NAMESPACE ${pod} -c database -- ls -lrt /pgwal/${POSTGRES_CLUSTER_NAME}-wal/ | wc -l 2>"/dev/null"`
+                PG_WAL_DIR_COUNT=`kubectl exec -n $NAMESPACE ${pod} -c database -- ls -lrt /pgwal/${POSTGRES_PGWAL_NAME}/ | wc -l 2>"/dev/null"`
                 echo "$PG_WAL_DIR_COUNT" > $health_dir/pgwal-dir-count.out
 
                 #pg wal dir history data
-                PG_WAL_HISTORY_LIST=`kubectl exec -n $NAMESPACE ${pod} -c database -- ls -lrt /pgwal/${POSTGRES_CLUSTER_NAME}-wal/ | grep history 2>"/dev/null"`
+                PG_WAL_HISTORY_LIST=`kubectl exec -n $NAMESPACE ${pod} -c database -- ls -lrt /pgwal/${POSTGRES_PGWAL_NAME}/ | grep history 2>"/dev/null"`
                 echo "$PG_WAL_HISTORY_LIST" > $health_dir/pgwal-history-list.out
 
                 # pgdata du
-                PG_DATA_DU_OUTPUT=`kubectl exec -n $NAMESPACE ${pod} -c database -- du -sh /pgdata/${POSTGRES_CLUSTER_NAME}/  2>"/dev/null"`
+                PG_DATA_DU_OUTPUT=`kubectl exec -n $NAMESPACE ${pod} -c database -- du -sh /pgdata/${POSTGRES_PGLOGS_NAME}/  2>"/dev/null"`
                 echo "$PG_DATA_DU_OUTPUT" > $health_dir/pgdata-du.out
 
                 # pgwal du
-                PG_WAL_DU_OUTPUT=`kubectl exec -n $NAMESPACE ${pod} -c database -- du -sh /pgwal/${POSTGRES_CLUSTER_NAME}-wal/  2>"/dev/null"`
+                PG_WAL_DU_OUTPUT=`kubectl exec -n $NAMESPACE ${pod} -c database -- du -sh /pgwal/${POSTGRES_PGWAL_NAME}/  2>"/dev/null"`
                 echo "$PG_WAL_DU_OUTPUT" > $health_dir/pgwal-du.out
-
             fi
 
             #grab gateway diagnostic data
