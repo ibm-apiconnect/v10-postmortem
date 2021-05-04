@@ -38,7 +38,7 @@ Enable the following if troubleshooting an issue for the following subsystems:
 ### Manager
 - `--diagnostic-manager`
 - `--collect-crunchy`<br />
-> **Note**: To use this option make sure to download the `crunchy_gather.py` script and make sure directory as the postmortem script.
+> **Note**: To use this option make sure to download the `crunchy_gather.py` script and place in the same directory as the postmortem script.
 ### Gateway
 `--diagnostic-gateway`
 > **Note**: In order for this switch to function, make sure connections to `127.0.0.1` are not restricted on the local machine.
