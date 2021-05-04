@@ -653,16 +653,15 @@ for NAMESPACE in $NAMESPACE_LIST; do
         fi
     done
 
-    #grab crunchy mustgather
-    if [[ $COLLECT_CRUNCHY -eq 1 && "$NAMESPACE" != "kube-system" ]]; then
-        $CURRENT_PATH/crunchy_gather.py -n $NAMESPACE -o $K8S_NAMESPACES_CRUNCHY_DATA &> "${K8S_NAMESPACES_CRUNCHY_DATA}/output.log"
-    fi
-
     #grab lists
     OUTPUT=`kubectl get events -n $NAMESPACE 2>/dev/null`
     [[ $? -ne 0 || ${#OUTPUT} -eq 0 ]] ||  echo "$OUTPUT" > "${K8S_NAMESPACES_LIST_DATA}/events.out"
     OUTPUT=`kubectl get hpa -n $NAMESPACE 2>/dev/null`
     [[ $? -ne 0 || ${#OUTPUT} -eq 0 ]] ||  echo "$OUTPUT" > "${K8S_NAMESPACES_LIST_DATA}/hpa.out"
+    OUTPUT=`kubectl get validatingwebhookconfiguration -n $NAMESPACE 2>/dev/null`
+    [[ $? -ne 0 || ${#OUTPUT} -eq 0 ]] ||  echo "$OUTPUT" > "${K8S_NAMESPACES_LIST_DATA}/validatingwebhookconfiguration.out"
+    OUTPUT=`kubectl get mutatingwebhookconfiguration -n $NAMESPACE 2>/dev/null`
+    [[ $? -ne 0 || ${#OUTPUT} -eq 0 ]] ||  echo "$OUTPUT" > "${K8S_NAMESPACES_LIST_DATA}/mutatingwebhookconfiguration.out"
 
     #grab ingress
     OUTPUT1=`kubectl get ingress -n $NAMESPACE 2>/dev/null`
@@ -712,6 +711,11 @@ for NAMESPACE in $NAMESPACE_LIST; do
         done <<< "$OUTPUT"
     else
         rm -fr $K8S_NAMESPACES_CRONJOB_DATA
+    fi
+
+    #grab crunchy mustgather
+    if [[ $COLLECT_CRUNCHY -eq 1 && "$NAMESPACE" != "kube-system" ]]; then
+        $CURRENT_PATH/crunchy_gather.py -n $NAMESPACE -o $K8S_NAMESPACES_CRUNCHY_DATA &> "${K8S_NAMESPACES_CRUNCHY_DATA}/output.log"
     fi
 
     #grab daemonset data
