@@ -1090,7 +1090,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
                 ANALYTICS_DIAGNOSTIC_DATA="${K8S_NAMESPACES_POD_DIAGNOSTIC_DATA}/analytics/${pod}"
                 mkdir -p $ANALYTICS_DIAGNOSTIC_DATA
 
-                if [[ "$pod" == *"storage-data"* || "$pod" == *"storage-basic"* ]]; then
+                if [[ "$pod" == *"storage-data"* || "$pod" == *"storage-basic"* || "$pod" == *"storage-shared"* ]]; then 
                     OUTPUT1=`kubectl exec -n $NAMESPACE $pod -- curl_es -s "_cluster/health?pretty"`
                     echo "$OUTPUT1" >"${ANALYTICS_DIAGNOSTIC_DATA}/curl-cluster_health.out"
                     OUTPUT1=`kubectl exec -n $NAMESPACE $pod -- curl_es -s "_cat/nodes?v"`
