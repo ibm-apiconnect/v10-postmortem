@@ -663,24 +663,56 @@ for NAMESPACE in $NAMESPACE_LIST; do
     OUTPUT=`kubectl get mutatingwebhookconfiguration -n $NAMESPACE 2>/dev/null`
     [[ $? -ne 0 || ${#OUTPUT} -eq 0 ]] ||  echo "$OUTPUT" > "${K8S_NAMESPACES_LIST_DATA}/mutatingwebhookconfiguration.out"
 
-    #grab ingress
-    OUTPUT1=`kubectl get ingress -n $NAMESPACE 2>/dev/null`
-    if [[ $? -eq 0 && ${#OUTPUT1} -gt 0 ]]; then
-        echo "$OUTPUT1" > "${K8S_NAMESPACES_LIST_DATA}/ingress.out"
+    #grab ingress/routes then check each
+    OUTPUT=`kubectl get ingress -n $NAMESPACE 2>/dev/null`
+    if [[ ${#OUTPUT} -gt 0 ]]; then
+        ir_outfile="ingress.out"
+        ir_checks_outfile="ingress-checks.out"
+        IS_OCP=0
+    else
+        OUTPUT=`kubectl get routes -n $NAMESPACE 2>/dev/null`
+        ir_outfile="routes.out"
+        ir_checks_outfile="routes-checks.out"
+        IS_OCP=1
+    fi
 
-        #check each endpoint using nslookup
-        if [[ ! -z "$PORTAL_NAMESPACE" && ! -z "$PORTAL_PODNAME" ]]; then
-            echo -e  "\n\n----- Test for ingress endpoint DNS connectivity -----" >> "${K8S_NAMESPACES_LIST_DATA}/ingress.out"
+    IR_OUTFILE="${K8S_NAMESPACES_LIST_DATA}/${ir_outfile}"
+    IR_CHECKS_OUTFILE="${K8S_NAMESPACES_LIST_DATA}/${ir_checks_outfile}"
 
-            while read line; do
-                ingress=`echo "$line" | awk -F' ' '{print $1}'`
-                endpoint=`echo "$line" | awk -F' ' '{print $2}'`
+    if [[ ${#OUTPUT} -gt 0 && ! -f $IR_OUTFILE && ! -f $IR_CHECKS_OUTFILE ]]; then
+        echo "$OUTPUT" > $IR_OUTFILE
 
-                if [[ "$ingress" != "NAME" ]]; then
-                    OUTPUT2=`kubectl exec -n $PORTAL_NAMESPACE -c admin $PORTAL_PODNAME -- nslookup $endpoint`
-                    [[ ${#OUTPUT2} -eq 0 ]] || echo -e "$ nslookup ${endpoint}\n${OUTPUT2}\n\n" >> "${K8S_NAMESPACES_LIST_DATA}/ingress.out"
+        #check if portal pods are available to use nslookup
+        OUTPUT1=`kubectl get pods -n $NAMESPACE 2>/dev/null | egrep -v "up|downloads" | egrep "portal.*www|-apim-|-client-" | head -n1`
+        if [[ ${#OUTPUT} -gt 0 ]]; then
+            nslookup_pod=`echo "${OUTPUT1}" | awk '{print $1}'`
+        fi
+
+        #determine host column
+        title_column=`echo "${OUTPUT}" | head -n1`
+        column_count=`echo "${title_column}" | awk '{print NF}'`
+        pos=1
+        while [ $pos -lt $column_count ]; do
+            token=`echo "${title_column}" | awk -v p=$pos '{print $p}'`
+            if [[ "${token}" == *"HOST"* ]]; then
+                break
+            fi
+            pos=$(( $pos + 1 ))
+        done
+
+        #check hosts
+        if [[ ${#nslookup_pod} -gt 0 && $pos -lt $column_count ]]; then
+            ingress_list=`echo "${OUTPUT}" | grep -v NAME | awk -v p=$pos '{print $p}' | uniq`
+            at_start=1
+            while read ingress; do
+                nslookup_output=`kubectl exec -n $NAMESPACE $nslookup_pod -- nslookup $ingress 2>&1`
+                if [[ $at_start -eq 1 ]]; then
+                    echo -e "${nslookup_output}" > $IR_CHECKS_OUTFILE
+                else
+                    echo -e "\n\n===============\n\n${nslookup_output}" >> $IR_CHECKS_OUTFILE
                 fi
-            done <<< "$OUTPUT1"
+                at_start=0
+            done <<< "$ingress_list"
         fi
     fi
 
@@ -932,34 +964,6 @@ for NAMESPACE in $NAMESPACE_LIST; do
             fi
             if [[ ! -d "$LOG_TARGET_PATH" ]]; then
                 mkdir -p $LOG_TARGET_PATH
-            fi
-
-            if [[ $NSLOOKUP_COMPLETE -eq 0 && $CHECK_INGRESS -eq 1 ]]; then
-                if [[ ( "${pod}" == "${subManager}-apim"* && "${pod}" != *"initschema"* ) || ( "${pod}" == "${subAnalytics}-client"* ) || ( "${pod}" == "${subPortal}-"*"www"* ) ]]; then
-                    PERFORM_NSLOOKUP=1
-                fi
-                
-                if [[ $PERFORM_NSLOOKUP -eq 1 ]]; then
-                    #grab ingress or routes
-                    ingress_list=`kubectl get ingress -n $NAMESPACE 2>/dev/null`
-                    [ $? -eq 0 ] || ingress_list=`kubectl get routes -n $NAMESPACE 2>/dev/null`
-
-                    ingress_list=`echo "${ingress_list}" | grep -v NAME | awk '{print $2}' | uniq`
-                    at_start=1
-                    while read ingress; do
-                        nslookup_output=`kubectl exec -n $NAMESPACE $pod -- nslookup $ingress 2>&1`
-                        if [[ $at_start -eq 1 ]]; then
-                            echo -e "${nslookup_output}" > "${K8S_NAMESPACES_LIST_DATA}/ingress-checks.out"
-                        else
-                            echo -e "\n\n===============\n\n${nslookup_output}" >> "${K8S_NAMESPACES_LIST_DATA}/ingress-checks.out"
-                        fi
-                        at_start=0
-                    done <<< "$ingress_list"
-
-                    NSLOOKUP_COMPLETE=1
-                fi
-
-                PERFORM_NSLOOKUP=0
             fi
 
             #grab ingress configuration
