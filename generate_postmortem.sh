@@ -665,7 +665,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
         echo "$OUTPUT" > $IR_OUTFILE
 
         #check if portal pods are available to use nslookup
-        OUTPUT1=`kubectl get pods -n $NAMESPACE 2>/dev/null | egrep -v "up|downloads" | egrep "portal.*www|-apim-|-client-" | head -n1`
+        OUTPUT1=`kubectl get pods -n $NAMESPACE 2>/dev/null | egrep -v "up|downloads" | egrep "portal.*www|-apim-|-client-|-ui-" | head -n1`
         if [[ ${#OUTPUT} -gt 0 ]]; then
             nslookup_pod=`echo "${OUTPUT1}" | awk '{print $1}'`
         fi
@@ -805,7 +805,6 @@ for NAMESPACE in $NAMESPACE_LIST; do
     fi
 
     #grab pod data
-    NSLOOKUP_COMPLETE=0
     OUTPUT=`kubectl get pods -n $NAMESPACE -o wide 2>/dev/null`
     if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
         echo "$OUTPUT" > "${K8S_NAMESPACES_POD_DATA}/pods.out"
