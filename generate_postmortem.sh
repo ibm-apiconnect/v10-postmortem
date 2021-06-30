@@ -31,7 +31,8 @@ for switch in $@; do
             echo -e "--diagnostic-manager:    Set to include additional manager specific data."
             echo -e "--diagnostic-gateway:    Set to include additional gateway specific data."
             echo -e "--diagnostic-portal:     Set to include additional portal specific data."
-            echo -e "--diagnostic-analytics:  Set to include additional portal specific data."
+            echo -e "--diagnostic-analytics:  Set to include additional analytics specific data."
+            echo -e "--diagnostic-event:     Set to include additional Event Endpoint Management specific data."
             echo -e ""
             echo -e "--debug:                 Set to enable verbose logging."
             echo -e ""
@@ -63,6 +64,9 @@ for switch in $@; do
             ;;
         *"--diagnostic-analytics"*)
             DIAG_ANALYTICS=1
+            ;;
+        *"--diagnostic-event"*)
+            DIAG_EVENT=1
             ;;
         *"--log-limit"*)
             limit=`echo "${switch}" | cut -d'=' -f2`
@@ -249,14 +253,16 @@ if [[ $AUTO_DETECT -eq 1 ]]; then
     SUBSYS_PORTAL="ISNOTSET"
     SUBSYS_GATEWAY_V5="ISNOTSET"
     SUBSYS_GATEWAY_V6="ISNOTSET"
+    SUBSYS_EVENT="ISNOTSET"
 
     SUBSYS_MANAGER_COUNT=0
     SUBSYS_ANALYTICS_COUNT=0
     SUBSYS_PORTAL_COUNT=0
     SUBSYS_GATEWAY_V5_COUNT=0
     SUBSYS_GATEWAY_V6_COUNT=0
+    SUBSYS_EVENT_COUNT=0
 
-    CLUSTER_LIST=(ManagementCluster AnalyticsCluster PortalCluster GatewayCluster)
+    CLUSTER_LIST=(ManagementCluster AnalyticsCluster PortalCluster GatewayCluster eventendpointmanager eventgatewaycluster)
     ns_matches=""
 
     while read line; do
@@ -310,6 +316,14 @@ if [[ $AUTO_DETECT -eq 1 ]]; then
                                 fi
                                 ((SUBSYS_GATEWAY_V6_COUNT=SUBSYS_GATEWAY_V6_COUNT+1))
                             fi
+                        ;;
+                        "eventgatewaycluster" | "eventendpointmanager")
+                            if [[ ${SUBSYS_EVENT} == "ISNOTSET" ]]; then
+                                SUBSYS_EVENT=$name
+                            else
+                                SUBSYS_EVENT+=" ${name}"
+                            fi
+                            ((SUBSYS_EVENT_COUNT=SUBSYS_EVENT_COUNT+1))
                         ;;
                     esac
 
@@ -639,7 +653,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
     mkdir -p $K8S_NAMESPACES_STS_DESCRIBE_DATA
 
     #grab cluster configuration, equivalent to "apiconnect-up.yml" which now resides in cluster
-    CLUSTER_LIST=(apic ManagementCluster ManagementBackup ManagementRestore ManagementDBUpgrade AnalyticsCluster PortalCluster GatewayCluster)
+    CLUSTER_LIST=(apic ManagementCluster ManagementBackup ManagementRestore ManagementDBUpgrade AnalyticsCluster PortalCluster GatewayCluster eventgatewaycluster eventendpointmanager)
     for cluster in ${CLUSTER_LIST[@]}; do
         OUTPUT=`kubectl get -n $NAMESPACE $cluster 2>/dev/null`
         if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
@@ -841,11 +855,13 @@ for NAMESPACE in $NAMESPACE_LIST; do
             IS_GATEWAY=0
             IS_PORTAL=0
             IS_ANALYTICS=0
+            IS_EVENT=0
 
             subManager=""
             subAnalytics=""
             subPortal=""
             subGateway=""
+            subEvent=""
 
             CHECK_INGRESS=0
 
@@ -855,7 +871,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
                         *"calico"*|*"flannel"*) SUBFOLDER="networking";;
                         *"coredns"*) SUBFOLDER="coredns";;
                         *"etcd"*) SUBFOLDER="etcd";;
-                        *"ingress"*) 
+                        *"ingress"*)
                             IS_INGRESS=1
                             SUBFOLDER="ingress"
                             ;;
@@ -907,6 +923,9 @@ for NAMESPACE in $NAMESPACE_LIST; do
                         *"ibm-apiconnect"*)
                             SUBFOLDER="operator"
                             ;;
+                        "${SUBSYS_EVENT}"*)
+                            SUBFOLDER="eventEndpointManagement"
+                            ;;
                         *)
                             #check for multiple subsystems
                             if [[ SUBSYS_MANAGER_COUNT -gt 1 ]]; then
@@ -948,6 +967,14 @@ for NAMESPACE in $NAMESPACE_LIST; do
                                         IS_GATEWAY=1
                                     fi
                                 done
+                            elif [[ SUBSYS_EVENT_COUNT -gt 1 ]]; then
+                                for s in $SUBSYS_EVENT; do
+                                    if [[ "${pod}" == "${s}-"* ]]; then
+                                        SUBFOLDER="eventEndpointManagement"
+                                        subEvent=$s
+                                        IS_EVENT=1
+                                    fi
+                                done
                             else
                                 SUBFOLDER="other"
                             fi
@@ -956,7 +983,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
                     DESCRIBE_TARGET_PATH="${K8S_NAMESPACES_POD_DESCRIBE_DATA}/${SUBFOLDER}"
                     LOG_TARGET_PATH="${K8S_NAMESPACES_POD_LOG_DATA}/${SUBFOLDER}";;
             esac
-            
+
             #make sure directories exist
             if [[ ! -d "$DESCRIBE_TARGET_PATH" ]]; then
                 mkdir -p $DESCRIBE_TARGET_PATH
@@ -986,13 +1013,13 @@ for NAMESPACE in $NAMESPACE_LIST; do
                 POSTGRES_PGWAL_NAME=`kubectl exec -n $NAMESPACE ${pod} -- ls -1 /pgwal | grep -v lost 2>"/dev/null"`
 
                 #pglogs
-                      
+
                 kubectl cp -n $NAMESPACE "${pod}:/pgdata/${POSTGRES_PGLOGS_NAME}/pglogs" $target_dir &>/dev/null
 
                 #df
                 DB_DF_OUTPUT=`kubectl exec -n $NAMESPACE ${pod} -c database -- df -h 2>"/dev/null"`
                 echo "$DB_DF_OUTPUT" > $health_dir/df.out
-                
+
                 #pg wal dir count
                 PG_WAL_DIR_COUNT=`kubectl exec -n $NAMESPACE ${pod} -c database -- ls -lrt /pgwal/${POSTGRES_PGWAL_NAME}/ | wc -l 2>"/dev/null"`
                 echo "$PG_WAL_DIR_COUNT" > $health_dir/pgwal-dir-count.out
@@ -1017,7 +1044,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
 
                 #grab all "gwd-log.log" files
                 GWD_FILE_LIST=`kubectl exec -n $NAMESPACE ${pod} -- find /opt/ibm/datapower/drouter/temporary/log/apiconnect/ -name "gwd-log.log*"`
-                echo "${GWD_FILE_LIST}" | while read fullpath; do 
+                echo "${GWD_FILE_LIST}" | while read fullpath; do
                     filename=$(basename $fullpath)
                     kubectl cp -n $NAMESPACE ${pod}:${fullpath} "${GATEWAY_DIAGNOSTIC_DATA}/${filename}" &>/dev/null
                 done
@@ -1041,7 +1068,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
 
                 #only proceed with error report if response status code is 200
                 if [[ $response -eq 200 ]]; then
-                    
+
                     #pull error report
                     echo -e "Pausing for error report to generate..."
                     sleep $ERROR_REPORT_SLEEP_TIMEOUT
@@ -1093,7 +1120,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
                 ANALYTICS_DIAGNOSTIC_DATA="${K8S_NAMESPACES_POD_DIAGNOSTIC_DATA}/analytics/${pod}"
                 mkdir -p $ANALYTICS_DIAGNOSTIC_DATA
 
-                if [[ "$pod" == *"storage-data"* || "$pod" == *"storage-basic"* || "$pod" == *"storage-shared"* ]]; then 
+                if [[ "$pod" == *"storage-data"* || "$pod" == *"storage-basic"* || "$pod" == *"storage-shared"* ]]; then
                     OUTPUT1=`kubectl exec -n $NAMESPACE $pod -- curl_es -s "_cluster/health?pretty"`
                     echo "$OUTPUT1" >"${ANALYTICS_DIAGNOSTIC_DATA}/curl-cluster_health.out"
                     OUTPUT1=`kubectl exec -n $NAMESPACE $pod -- curl_es -s "_cat/nodes?v"`
@@ -1109,6 +1136,17 @@ for NAMESPACE in $NAMESPACE_LIST; do
                 elif [[ "$pod" == *"ingestion"* ]]; then
                     OUTPUT1=`kubectl exec -n $NAMESPACE $pod -- curl -s "localhost:9600/_node/stats?pretty"`
                     echo "$OUTPUT1" >"${ANALYTICS_DIAGNOSTIC_DATA}/curl-node_stats.out"
+                fi
+            fi
+
+            #grab event endpoint management diagnostic data
+            if [[ $DIAG_DIAG_EVENT -eq 1 && $IS_EVENT -eq 1 && "$ready" == "1/1" && "$status" == "Running" ]]; then
+                EVENT_DIAGNOSTIC_DATA="${K8S_NAMESPACES_POD_DIAGNOSTIC_DATA}/eventEndpointManagement/${pod}"
+                mkdir -p $EVENT_DIAGNOSTIC_DATA
+
+                if [[ "$pod" == *"event-gw"* ]]; then
+                   #Any Event Endpoint Management Specfics here
+                   echo "Event Endpoint Management called"
                 fi
             fi
 
@@ -1160,7 +1198,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
                             "db")
                                 mkdir -p $PORTAL_DIAGNOSTIC_DATA
                                 OUTPUT1=`kubectl exec -n $NAMESPACE -c $container $pod -- bash -ic "mysqldump portal" 2>"/dev/null"`
-                                echo "$OUTPUT1" >"${PORTAL_DIAGNOSTIC_DATA}/portal.dump" 
+                                echo "$OUTPUT1" >"${PORTAL_DIAGNOSTIC_DATA}/portal.dump"
                                 OUTPUT1=`kubectl exec -n $NAMESPACE -c $container $pod -- bash -ic "ls -lRAi --author --full-time" 2>"/dev/null"`
                                 echo "$OUTPUT1" >"${PORTAL_DIAGNOSTIC_DATA}/listing-all.out"
                                 OUTPUT1=`kubectl exec -n $NAMESPACE -c $container $pod -- bash -ic "ps -efHww --sort=-pcpu" 2>"/dev/null"`
@@ -1240,7 +1278,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
     else
         rm -fr $K8S_NAMESPACES_ROLEBINDING_DATA
     fi
-    
+
     #grab role service account data
     OUTPUT=`kubectl get sa -n $NAMESPACE 2>/dev/null`
     if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
@@ -1284,7 +1322,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
         echo "$OUTPUT" > "${K8S_NAMESPACES_SERVICE_DATA}/services.out"
         while read line; do
             svc=`echo "$line" | cut -d' ' -f1`
-            
+
             kubectl describe svc $svc -n $NAMESPACE &>"${K8S_NAMESPACES_SERVICE_DESCRIBE_DATA}/${svc}.out"
             [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_SERVICE_DESCRIBE_DATA}/${svc}.out"
 
