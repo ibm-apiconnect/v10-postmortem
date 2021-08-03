@@ -1076,7 +1076,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
 
                 #POST XML to gateway, start error report creation
                 admin_password="admin"
-                secret_name=`kubectl get secrets -n cp4i | egrep 'admin-secret|gw-admin' | awk '{print $1}'`
+                secret_name=`kubectl get secrets -n $NAMESPACE | egrep 'admin-secret|gw-admin' | awk '{print $1}'`
                 if [[ ${#secret_name} -gt 0 ]]; then
                     admin_password=`kubectl get secret $secret_name -o jsonpath='{.data.password}' | base64 -d`
                 fi
