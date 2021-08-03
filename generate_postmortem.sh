@@ -42,6 +42,11 @@ for switch in $@; do
             DEBUG_SET=1
             ;;
         *"--ova"*)
+            if [[ $EUID -ne 0 ]]; then
+                echo "This script must be run as root." 
+                exit 1
+            fi
+
             IS_OVA=1
             NO_PROMPT=1
             NAMESPACE_LIST="kube-system default"
@@ -115,6 +120,10 @@ done
 
 if [[ -z "$LOG_LIMIT" ]]; then
     LOG_LIMIT=""
+fi
+
+if [[ -z "$NO_PROMPT" ]]; then
+    NO_PROMPT=0
 fi
 
 if [[ -z "$SPECIFIC_NAMESPACES" ]]; then
@@ -233,6 +242,15 @@ if [[ $IS_OVA -eq 1 ]]; then
         cp "/root/.bash_history" "${OVA_DATA}/root-bash_history.out" &>/dev/null
     fi
 
+    #pull disk data
+    echo -e "> blkid /dev/sr0" >"${OVA_DATA}/disk_data.out" 2>/dev/null
+    blkid /dev/sr0 1>>"${OVA_DATA}/disk_data.out" 2>/dev/null
+    echo -e "\n> lsblk -fp" 1>>"${OVA_DATA}/disk_data.out" 2>/dev/null
+    lsblk -fp 1>>"${OVA_DATA}/disk_data.out" 2>/dev/null
+    echo -e "\n>df -kh | egrep -v 'kubelet|docker'" 1>>"${OVA_DATA}/disk_data.out" 2>/dev/null
+    df -kh | egrep -v 'kubelet|docker' 1>>"${OVA_DATA}/disk_data.out" 2>/dev/null
+
+    #pull appliance logs
     if [[ $PULL_APPLIANCE_LOGS -eq 1 ]]; then
         cd $OVA_DATA
         sudo apic logs &>/dev/null
@@ -249,14 +267,16 @@ if [[ $AUTO_DETECT -eq 1 ]]; then
     SUBSYS_PORTAL="ISNOTSET"
     SUBSYS_GATEWAY_V5="ISNOTSET"
     SUBSYS_GATEWAY_V6="ISNOTSET"
+    SUBSYS_EVENT="ISNOTSET"
 
     SUBSYS_MANAGER_COUNT=0
     SUBSYS_ANALYTICS_COUNT=0
     SUBSYS_PORTAL_COUNT=0
     SUBSYS_GATEWAY_V5_COUNT=0
     SUBSYS_GATEWAY_V6_COUNT=0
+    SUBSYS_EVENT_COUNT=0
 
-    CLUSTER_LIST=(ManagementCluster AnalyticsCluster PortalCluster GatewayCluster)
+    CLUSTER_LIST=(ManagementCluster AnalyticsCluster PortalCluster GatewayCluster EventEndpointManager EventGatewayCluster)
     ns_matches=""
 
     while read line; do
@@ -311,6 +331,14 @@ if [[ $AUTO_DETECT -eq 1 ]]; then
                                 ((SUBSYS_GATEWAY_V6_COUNT=SUBSYS_GATEWAY_V6_COUNT+1))
                             fi
                         ;;
+                        "EventEndpointManager" | "EventGatewayCluster")
+                            if [[ ${SUBSYS_EVENT} == "ISNOTSET" ]]; then
+                                SUBSYS_EVENT=$name
+                            else
+                                SUBSYS_EVENT+=" ${name}"
+                            fi
+                            ((SUBSYS_EVENT_COUNT=SUBSYS_EVENT_COUNT+1))
+                        ;;
                     esac
 
                     if [[ "${ns_matches}" != *"${ns}"* ]]; then
@@ -325,9 +353,10 @@ if [[ $AUTO_DETECT -eq 1 ]]; then
         done
     done <<< "$NS_LISTING"
 
+    space_count=`echo "${ns_matches}" | tr -cd ' \t' | wc -c`
     [ $SPECIFIC_NAMESPACES -eq 1 ] || echo -e "Auto-detected namespaces [${ns_matches}]."
-
-    if [[ $NO_PROMPT -ne 1 ]]; then
+    
+    if [[ $space_count -gt 0 && $NO_PROMPT -eq 0 ]]; then
         read -p "Proceed with data collection (y/n)? " yn
         case $yn in
             [Yy]* )
@@ -639,7 +668,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
     mkdir -p $K8S_NAMESPACES_STS_DESCRIBE_DATA
 
     #grab cluster configuration, equivalent to "apiconnect-up.yml" which now resides in cluster
-    CLUSTER_LIST=(apic ManagementCluster ManagementBackup ManagementRestore ManagementDBUpgrade AnalyticsCluster PortalCluster GatewayCluster)
+    CLUSTER_LIST=(apic AnalyticsBackups AnalyticsClusters AnalyticsRestores APIConnectClusters DataPowerServices DataPowerMonitors EventEndpointManager EventGatewayClusters GatewayClusters ManagementBackups ManagementClusters ManagementDBUpgrades ManagementRestores NatsClusters NatsServiceRoles NatsStreamingClusters PGClusters PGPolicies PGReplicas PGTasks PortalBackups PortalClusters PortalRestores PortalSecretRotations)
     for cluster in ${CLUSTER_LIST[@]}; do
         OUTPUT=`kubectl get -n $NAMESPACE $cluster 2>/dev/null`
         if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
@@ -841,11 +870,13 @@ for NAMESPACE in $NAMESPACE_LIST; do
             IS_GATEWAY=0
             IS_PORTAL=0
             IS_ANALYTICS=0
+            IS_EVENT=0
 
             subManager=""
             subAnalytics=""
             subPortal=""
             subGateway=""
+            subEvent=""
 
             CHECK_INGRESS=0
 
@@ -855,7 +886,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
                         *"calico"*|*"flannel"*) SUBFOLDER="networking";;
                         *"coredns"*) SUBFOLDER="coredns";;
                         *"etcd"*) SUBFOLDER="etcd";;
-                        *"ingress"*) 
+                        *"ingress"*)
                             IS_INGRESS=1
                             SUBFOLDER="ingress"
                             ;;
@@ -895,6 +926,9 @@ for NAMESPACE in $NAMESPACE_LIST; do
                             SUBFOLDER="gateway"
                             subGateway=$SUBSYS_GATEWAY_V6
                             IS_GATEWAY=1
+                            ;;
+                        "${SUBSYS_EVENT}"*)
+                            SUBFOLDER="event"
                             ;;
                         *"datapower"*)
                             SUBFOLDER="gateway"
@@ -946,6 +980,14 @@ for NAMESPACE in $NAMESPACE_LIST; do
                                         SUBFOLDER="gateway"
                                         subGateway=$s
                                         IS_GATEWAY=1
+                                    fi
+                                done
+                            elif [[ SUBSYS_EVENT_COUNT -gt 1 ]]; then
+                                for s in $SUBSYS_EVENT; do
+                                    if [[ "${pod}" == "${s}-"* ]]; then
+                                        SUBFOLDER="event"
+                                        subEvent=$s
+                                        IS_EVENT=1
                                     fi
                                 done
                             else
@@ -1017,7 +1059,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
 
                 #grab all "gwd-log.log" files
                 GWD_FILE_LIST=`kubectl exec -n $NAMESPACE ${pod} -- find /opt/ibm/datapower/drouter/temporary/log/apiconnect/ -name "gwd-log.log*"`
-                echo "${GWD_FILE_LIST}" | while read fullpath; do 
+                echo "${GWD_FILE_LIST}" | while read fullpath; do
                     filename=$(basename $fullpath)
                     kubectl cp -n $NAMESPACE ${pod}:${fullpath} "${GATEWAY_DIAGNOSTIC_DATA}/${filename}" &>/dev/null
                 done
@@ -1033,8 +1075,14 @@ for NAMESPACE in $NAMESPACE_LIST; do
                 generateXmlForErrorReport "$XML_PATH"
 
                 #POST XML to gateway, start error report creation
+                admin_password="admin"
+                secret_name=`kubectl get secrets -n $NAMESPACE | egrep 'admin-secret|gw-admin' | awk '{print $1}'`
+                if [[ ${#secret_name} -gt 0 ]]; then
+                    admin_password=`kubectl get secret $secret_name -o jsonpath='{.data.password}' | base64 -d`
+                fi
+
                 response=`curl -k -X POST --write-out %{http_code} --silent --output /dev/null \
-                    -u admin:admin \
+                    -u admin:${admin_password} \
                     -H "Content-Type: application/xml" \
                     -d "@${XML_PATH}" \
                     https://127.0.0.1:5550`
@@ -1356,6 +1404,80 @@ for NAMESPACE in $NAMESPACE_LIST; do
     fi
     #^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 done
+#------------------------------------------------------------------------------------------------------
+
+#------------------------------------ Pull Data CP4i specific data ------------------------------------
+NAMESPACE="ibm-common-services"
+kubectl get ns $NAMESPACE &>/dev/null
+if [[ $? -eq 0 ]]; then
+    ICS_NAMESPACE="${K8S_NAMESPACES}/ibm-common-services"
+
+    ICS_INSTALL_PLAN_DATA="${ICS_NAMESPACE}/install_plans"
+    ICS_INSTALL_PLAN_DESCRIBE_DATA="${ICS_INSTALL_PLAN_DATA}/describe"
+    ICS_INSTALL_PLAN_YAML_OUTPUT="${ICS_INSTALL_PLAN_DATA}/yaml"
+
+    ICS_SUBSCRIPTION_DATA="${ICS_NAMESPACE}/subscriptions"
+    ICS_SUBSCRIPTION_DESCRIBE_DATA="${ICS_SUBSCRIPTION_DATA}/describe"
+    ICS_SUBSCRIPTION_YAML_OUTPUT="${ICS_SUBSCRIPTION_DATA}/yaml"
+
+    ICS_CLUSTER_SERVICE_VERSION_DATA="${ICS_NAMESPACE}/cluster_service_version"
+    ICS_CLUSTER_SERVICE_VERSION_DESCRIBE_DATA="${ICS_CLUSTER_SERVICE_VERSION_DATA}/describe"
+    ICS_CLUSTER_SERVICE_VERSION_YAML_OUTPUT="${ICS_CLUSTER_SERVICE_VERSION_DATA}/yaml"
+
+    mkdir -p $ICS_INSTALL_PLAN_DESCRIBE_DATA
+    mkdir -p $ICS_INSTALL_PLAN_YAML_OUTPUT
+
+    mkdir -p $ICS_SUBSCRIPTION_DESCRIBE_DATA
+    mkdir -p $ICS_SUBSCRIPTION_YAML_OUTPUT
+
+    mkdir -p $ICS_CLUSTER_SERVICE_VERSION_DESCRIBE_DATA
+    mkdir -p $ICS_CLUSTER_SERVICE_VERSION_YAML_OUTPUT
+
+    OUTPUT=`kubectl get InstallPlan -n $NAMESPACE 2>/dev/null`
+    if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
+        echo "$OUTPUT" > "${ICS_INSTALL_PLAN_DATA}/install_plans.out"
+        while read line; do
+            ip=`echo "$line" | cut -d' ' -f1`
+            kubectl describe InstallPlan $ip -n $NAMESPACE &>"${ICS_INSTALL_PLAN_DESCRIBE_DATA}/${ip}.out"
+            [ $? -eq 0 ] || rm -f "${ICS_INSTALL_PLAN_DESCRIBE_DATA}/${ip}.out"
+
+            kubectl get InstallPlan $ip -o yaml -n $NAMESPACE &>"${ICS_INSTALL_PLAN_YAML_OUTPUT}/${ip}.out"
+            [ $? -eq 0 ] || rm -f "${ICS_INSTALL_PLAN_YAML_OUTPUT}/${ip}.out"
+        done <<< "$OUTPUT"
+    else
+        rm -fr $ICS_INSTALL_PLAN_DATA
+    fi
+
+    OUTPUT=`kubectl get Subscription -n $NAMESPACE 2>/dev/null`
+    if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
+        echo "$OUTPUT" > "${ICS_SUBSCRIPTION_DATA}/subscriptions.out"
+        while read line; do
+            sub=`echo "$line" | cut -d' ' -f1`
+            kubectl describe Subscription $sub -n $NAMESPACE &>"${ICS_SUBSCRIPTION_DESCRIBE_DATA}/${sub}.out"
+            [ $? -eq 0 ] || rm -f "${ICS_SUBSCRIPTION_DESCRIBE_DATA}/${sub}.out"
+
+            kubectl get Subscription $sub -o yaml -n $NAMESPACE &>"${ICS_SUBSCRIPTION_YAML_OUTPUT}/${sub}.out"
+            [ $? -eq 0 ] || rm -f "${ICS_SUBSCRIPTION_YAML_OUTPUT}/${sub}.out"
+        done <<< "$OUTPUT"
+    else
+        rm -fr $ICS_INSTALL_PLAN_DATA
+    fi
+
+    OUTPUT=`kubectl get ClusterServiceVersion -n $NAMESPACE 2>/dev/null`
+    if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
+        echo "$OUTPUT" > "${ICS_CLUSTER_SERVICE_VERSION_DATA}/cluster_service_version.out"
+        while read line; do
+            csv=`echo "$line" | cut -d' ' -f1`
+            kubectl describe ClusterServiceVersion $csv -n $NAMESPACE &>"${ICS_CLUSTER_SERVICE_VERSION_DESCRIBE_DATA}/${csv}.out"
+            [ $? -eq 0 ] || rm -f "${ICS_CLUSTER_SERVICE_VERSION_DESCRIBE_DATA}/${csv}.out"
+
+            kubectl get ClusterServiceVersion $csv -o yaml -n $NAMESPACE &>"${ICS_CLUSTER_SERVICE_VERSION_YAML_OUTPUT}/${csv}.out"
+            [ $? -eq 0 ] || rm -f "${ICS_CLUSTER_SERVICE_VERSION_YAML_OUTPUT}/${csv}.out"
+        done <<< "$OUTPUT"
+    else
+        rm -fr $ICS_INSTALL_PLAN_DATA
+    fi
+fi
 #------------------------------------------------------------------------------------------------------
 #=================================================================================================================
 
