@@ -243,12 +243,12 @@ if [[ $IS_OVA -eq 1 ]]; then
     fi
 
     #pull disk data
-    echo -e "> blkid /dev/sr0"
-    blkid /dev/sr0 1>"${OVA_DATA}/disk_data.out" 2>/dev/null
-    echo -e "\n> lsblk -fp"
+    echo -e "> blkid /dev/sr0" >"${OVA_DATA}/disk_data.out" 2>/dev/null
+    blkid /dev/sr0 1>>"${OVA_DATA}/disk_data.out" 2>/dev/null
+    echo -e "\n> lsblk -fp" 1>>"${OVA_DATA}/disk_data.out" 2>/dev/null
     lsblk -fp 1>>"${OVA_DATA}/disk_data.out" 2>/dev/null
-    echo -e "\n>df -kh | grep -v docker"
-    df -kh | grep -v docker 1>>"${OVA_DATA}/disk_data.out" 2>/dev/null
+    echo -e "\n>df -kh | egrep -v 'kubelet|docker'" 1>>"${OVA_DATA}/disk_data.out" 2>/dev/null
+    df -kh | egrep -v 'kubelet|docker' 1>>"${OVA_DATA}/disk_data.out" 2>/dev/null
 
     #pull appliance logs
     if [[ $PULL_APPLIANCE_LOGS -eq 1 ]]; then
