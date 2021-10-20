@@ -279,7 +279,7 @@ if [[ $AUTO_DETECT -eq 1 ]]; then
     SUBSYS_EVENT_COUNT=0
 
     CLUSTER_LIST=(ManagementCluster AnalyticsCluster PortalCluster GatewayCluster EventEndpointManager EventGatewayCluster)
-    EVENT_PREFIX=""
+    EVENT_PREFIX="eventendpo"
     ns_matches=""
     
 
