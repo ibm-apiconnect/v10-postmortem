@@ -279,7 +279,9 @@ if [[ $AUTO_DETECT -eq 1 ]]; then
     SUBSYS_EVENT_COUNT=0
 
     CLUSTER_LIST=(ManagementCluster AnalyticsCluster PortalCluster GatewayCluster EventEndpointManager EventGatewayCluster)
+    EVENT_PREFIX=""
     ns_matches=""
+    
 
     while read line; do
         ns=`echo "${line}" | awk '{print $1}'`
@@ -296,12 +298,14 @@ if [[ $AUTO_DETECT -eq 1 ]]; then
                     
                     case $cluster in
                         "ManagementCluster")
-                            if [[ ${SUBSYS_MANAGER} == "ISNOTSET" ]]; then
-                                SUBSYS_MANAGER=$name
-                            else
-                                SUBSYS_MANAGER+=" ${name}"
+                            if [[ "${name}" != "${EVENT_PREFIX}" ]]; then
+                                if [[ ${SUBSYS_MANAGER} == "ISNOTSET" ]]; then
+                                    SUBSYS_MANAGER=$name
+                                else
+                                    SUBSYS_MANAGER+=" ${name}"
+                                fi
+                                ((SUBSYS_MANAGER_COUNT=SUBSYS_MANAGER_COUNT+1))
                             fi
-                            ((SUBSYS_MANAGER_COUNT=SUBSYS_MANAGER_COUNT+1))
                         ;;
                         "AnalyticsCluster")
                             if [[ ${SUBSYS_ANALYTICS} == "ISNOTSET" ]]; then
@@ -312,12 +316,14 @@ if [[ $AUTO_DETECT -eq 1 ]]; then
                             ((SUBSYS_ANALYTICS_COUNT=SUBSYS_ANALYTICS_COUNT+1))
                         ;;
                         "PortalCluster")
-                            if [[ ${SUBSYS_PORTAL} == "ISNOTSET" ]]; then
-                                SUBSYS_PORTAL=$name
-                            else
-                                SUBSYS_PORTAL+=" ${name}"
+                            if [[ "${name}" != "${EVENT_PREFIX}" ]]; then
+                                if [[ ${SUBSYS_PORTAL} == "ISNOTSET" ]]; then
+                                    SUBSYS_PORTAL=$name
+                                else
+                                    SUBSYS_PORTAL+=" ${name}"
+                                fi
+                                ((SUBSYS_PORTAL_COUNT=SUBSYS_PORTAL_COUNT+1))
                             fi
-                            ((SUBSYS_PORTAL_COUNT=SUBSYS_PORTAL_COUNT+1))
                         ;;
                         "GatewayCluster")
                             if [[ "$name" == *"v5"* ]]; then
