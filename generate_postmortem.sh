@@ -291,7 +291,7 @@ if [[ $AUTO_DETECT -eq 1 ]]; then
                 while read line; do
                     name=`echo ${line} | awk '{print $1}'`
                     if [[ ${#name} -gt 10 ]]; then
-                        name = ${name:0:10}
+                        name=${name:0:10}
                     fi
                     
                     case $cluster in
