@@ -24,6 +24,7 @@ for switch in $@; do
             echo -e "--pull-portal-backup:    Pulls specified backup from portal cluster."
             echo -e "--performance-check:     Set to run performance checks."
             echo -e "--no-history:            Do not collect user history."
+            echo -e ""
             echo -e "--collect-secrets:       Collect secrets from targeted namespaces.  Due to sensitivity of data, do not use unless requested by support."
             echo -e "--collect-crunchy:       Collect Crunchy mustgather."
             echo -e ""
