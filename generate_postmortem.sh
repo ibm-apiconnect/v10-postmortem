@@ -295,10 +295,10 @@ if [[ $AUTO_DETECT -eq 1 ]]; then
                     if [[ ${#name} -gt 10 ]]; then
                         name=${name:0:10}
                     fi
-                    
+
                     case $cluster in
                         "ManagementCluster")
-                            if [[ "${name}" != "${EVENT_PREFIX}" ]]; then
+                            if [[ "${name}" != "${EVENT_PREFIX}"* ]]; then
                                 if [[ ${SUBSYS_MANAGER} == "ISNOTSET" ]]; then
                                     SUBSYS_MANAGER=$name
                                 else
@@ -316,7 +316,7 @@ if [[ $AUTO_DETECT -eq 1 ]]; then
                             ((SUBSYS_ANALYTICS_COUNT=SUBSYS_ANALYTICS_COUNT+1))
                         ;;
                         "PortalCluster")
-                            if [[ "${name}" != "${EVENT_PREFIX}" ]]; then
+                            if [[ "${name}" != "${EVENT_PREFIX}"* ]]; then
                                 if [[ ${SUBSYS_PORTAL} == "ISNOTSET" ]]; then
                                     SUBSYS_PORTAL=$name
                                 else
@@ -351,7 +351,7 @@ if [[ $AUTO_DETECT -eq 1 ]]; then
                             ((SUBSYS_EVENT_COUNT=SUBSYS_EVENT_COUNT+1))
                         ;;
                     esac
-
+                    
                     if [[ "${ns_matches}" != *"${ns}"* ]]; then
                         if [[ ${#ns_matches} -eq 0 ]]; then
                             ns_matches=$ns
@@ -914,6 +914,9 @@ for NAMESPACE in $NAMESPACE_LIST; do
                 *)
                     CHECK_INGRESS=1
                     case $pod in
+                        "${SUBSYS_EVENT}"*)
+                            SUBFOLDER="event"
+                            ;;
                         *"${SUBSYS_MANAGER}"*|*"postgres"*)
                             SUBFOLDER="manager"
                             subManager=$SUBSYS_MANAGER
@@ -937,9 +940,6 @@ for NAMESPACE in $NAMESPACE_LIST; do
                             SUBFOLDER="gateway"
                             subGateway=$SUBSYS_GATEWAY_V6
                             IS_GATEWAY=1
-                            ;;
-                        "${SUBSYS_EVENT}"*)
-                            SUBFOLDER="event"
                             ;;
                         *"datapower"*)
                             SUBFOLDER="gateway"
