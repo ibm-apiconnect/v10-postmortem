@@ -873,7 +873,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
         echo "$OUTPUT" > "${K8S_NAMESPACES_POD_DATA}/pods.out"
         while read line; do
             pod=`echo "$line" | awk -F ' ' '{print $1}'`
-            ready=`echo "$line" | awk -F ' ' '{print $2}'`
+            ready=`echo "$line" | awk -F ' ' '{print $2}' | awk -F'/' '{ print ($1==$2) ? "1" : "0" }'`
             status=`echo "$line" | awk -F ' ' '{print $3}'`
             node=`echo "$line" | awk -F ' ' '{print $7}'`
 
@@ -1063,7 +1063,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
             fi
 
             #grab gateway diagnostic data
-            if [[ $DIAG_GATEWAY -eq 1 && $IS_GATEWAY -eq 1 && "$ready" == "1/1" && "$status" == "Running" && "$pod" != *"monitor"* && "$pod" != *"operator"* ]]; then
+            if [[ $DIAG_GATEWAY -eq 1 && $IS_GATEWAY -eq 1 && $ready -eq 1 && "$status" == "Running" && "$pod" != *"monitor"* && "$pod" != *"operator"* ]]; then
                 GATEWAY_DIAGNOSTIC_DATA="${K8S_NAMESPACES_POD_DIAGNOSTIC_DATA}/gateway/${pod}"
                 mkdir -p $GATEWAY_DIAGNOSTIC_DATA
 
@@ -1147,7 +1147,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
             fi
 
             #grab analytics diagnostic data
-            if [[ $DIAG_ANALYTICS -eq 1 && $IS_ANALYTICS -eq 1 && "$ready" == "1/1" && "$status" == "Running" ]]; then
+            if [[ $DIAG_ANALYTICS -eq 1 && $IS_ANALYTICS -eq 1 && $ready -eq 1 && "$status" == "Running" ]]; then
                 ANALYTICS_DIAGNOSTIC_DATA="${K8S_NAMESPACES_POD_DIAGNOSTIC_DATA}/analytics/${pod}"
                 mkdir -p $ANALYTICS_DIAGNOSTIC_DATA
 
