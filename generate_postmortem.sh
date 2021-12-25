@@ -293,12 +293,14 @@ if [[ $AUTO_DETECT -eq 1 ]]; then
                 while read line; do
                     name=`echo ${line} | awk '{print $1}'`
                     if [[ ${#name} -gt 10 ]]; then
-                        name=${name:0:10}
+                        event_name=${name:0:10}
+                    else
+                        event_name=$name
                     fi
 
                     case $cluster in
                         "ManagementCluster")
-                            if [[ "${name}" != "${EVENT_PREFIX}"* ]]; then
+                            if [[ "${event_name}" != "${EVENT_PREFIX}"* ]]; then
                                 if [[ ${SUBSYS_MANAGER} == "ISNOTSET" ]]; then
                                     SUBSYS_MANAGER=$name
                                 else
@@ -316,7 +318,7 @@ if [[ $AUTO_DETECT -eq 1 ]]; then
                             ((SUBSYS_ANALYTICS_COUNT=SUBSYS_ANALYTICS_COUNT+1))
                         ;;
                         "PortalCluster")
-                            if [[ "${name}" != "${EVENT_PREFIX}"* ]]; then
+                            if [[ "${event_name}" != "${EVENT_PREFIX}"* ]]; then
                                 if [[ ${SUBSYS_PORTAL} == "ISNOTSET" ]]; then
                                     SUBSYS_PORTAL=$name
                                 else
@@ -344,9 +346,9 @@ if [[ $AUTO_DETECT -eq 1 ]]; then
                         ;;
                         "EventEndpointManager" | "EventGatewayCluster")
                             if [[ ${SUBSYS_EVENT} == "ISNOTSET" ]]; then
-                                SUBSYS_EVENT=$name
+                                SUBSYS_EVENT=$event_name
                             else
-                                SUBSYS_EVENT+=" ${name}"
+                                SUBSYS_EVENT+=" ${event_name}"
                             fi
                             ((SUBSYS_EVENT_COUNT=SUBSYS_EVENT_COUNT+1))
                         ;;
