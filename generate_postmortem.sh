@@ -61,6 +61,7 @@ for switch in $@; do
             ;;
         *"--diagnostic-manager"*)
             DIAG_MANAGER=1
+            COLLECT_CRUNCHY=1
             ;;
         *"--diagnostic-gateway"*)
             DIAG_GATEWAY=1
@@ -130,6 +131,16 @@ fi
 
 if [[ -z "$SPECIFIC_NAMESPACES" ]]; then
     SPECIFIC_NAMESPACES=0
+fi
+
+## Always collect manager diagnostics
+if [[ -z "$DIAG_MANAGER" ]]; then
+    DIAG_MANAGER=1
+fi
+
+## Always collect crunchy logs 
+if [[ -z "$COLLECT_CRUNCHY" ]]; then
+    COLLECT_CRUNCHY=1
 fi
 
 #====================================== Confirm pre-reqs and init variables ======================================
@@ -789,7 +800,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
 
     #grab crunchy mustgather
     if [[ $COLLECT_CRUNCHY -eq 1 && "$NAMESPACE" != "kube-system" ]]; then
-        $CURRENT_PATH/crunchy_gather.py -n $NAMESPACE -o $K8S_NAMESPACES_CRUNCHY_DATA &> "${K8S_NAMESPACES_CRUNCHY_DATA}/output.log"
+        $CURRENT_PATH/crunchy_gather.py -n $NAMESPACE -l 5 -c kubectl -o $K8S_NAMESPACES_CRUNCHY_DATA &> "${K8S_NAMESPACES_CRUNCHY_DATA}/crunchy-collect.log"
     fi
 
     #grab daemonset data
