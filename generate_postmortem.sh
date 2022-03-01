@@ -133,16 +133,6 @@ if [[ -z "$SPECIFIC_NAMESPACES" ]]; then
     SPECIFIC_NAMESPACES=0
 fi
 
-## Always collect manager diagnostics
-if [[ -z "$DIAG_MANAGER" ]]; then
-    DIAG_MANAGER=1
-fi
-
-## Always collect crunchy logs 
-if [[ -z "$COLLECT_CRUNCHY" ]]; then
-    COLLECT_CRUNCHY=1
-fi
-
 #====================================== Confirm pre-reqs and init variables ======================================
 #------------------------------- Make sure all necessary commands exists ------------------------------
 which kubectl &> /dev/null
