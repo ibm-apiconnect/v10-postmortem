@@ -62,6 +62,11 @@ for switch in $@; do
         *"--diagnostic-manager"*)
             DIAG_MANAGER=1
             COLLECT_CRUNCHY=1
+            SCRIPT_LOCATION="`pwd`/crunchy_gather.py"
+            if [[ ! -f $SCRIPT_LOCATION ]]; then
+                echo -e "Unable to locate script [crunchy_gather.py] in current directory.  Download from GitHub repository.  Exiting..."
+                exit 1
+            fi
             ;;
         *"--diagnostic-gateway"*)
             DIAG_GATEWAY=1
