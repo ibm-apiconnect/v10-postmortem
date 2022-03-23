@@ -246,6 +246,7 @@ if [[ $IS_OVA -eq 1 ]]; then
 
     #grab bash history
     if [[ $NO_HISTORY -ne 1 ]]; then
+        history >> "${OVA_DATA}/root-timestamped-bash_history.out"
         cp "/home/apicadm/.bash_history" "${OVA_DATA}/apicadm-bash_history.out" &>/dev/null
         cp "/root/.bash_history" "${OVA_DATA}/root-bash_history.out" &>/dev/null
     fi
