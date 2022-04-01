@@ -266,6 +266,9 @@ if [[ $IS_OVA -eq 1 ]]; then
         cd $OVA_DATA
         sudo apic logs &>/dev/null
     fi
+
+    #pull syslogs
+    cp "/var/log/*syslog*" "${OVA_DATA}/"
 fi
 #=================================================================================================================
 
