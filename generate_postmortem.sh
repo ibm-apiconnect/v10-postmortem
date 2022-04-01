@@ -268,7 +268,7 @@ if [[ $IS_OVA -eq 1 ]]; then
     fi
 
     #pull syslogs
-    cp "/var/log/*syslog*" "${OVA_DATA}/"
+    find "/var/log" -name "*syslog*" -exec cp '{}' "${OVA_DATA}/" \;
 fi
 #=================================================================================================================
 
