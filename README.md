@@ -37,8 +37,10 @@ Enable the following if troubleshooting an issue for the following subsystems:
 - `--diagnostic-all`
 ### Manager
 - `--diagnostic-manager`
-- `--collect-crunchy`<br />
-> **Note**: To use this option make sure to download the `crunchy_gather.py` script then place in the same directory as the postmortem script.
+- `--collect-crunchy`
+- `--collect-edb`<br />
+> **Note**: To use this option make sure to download the `crunchy_gather.py` script then place in the same directory as the postmortem script.   
+> **Note**: To use this option make sure to download the `edb_mustgather.py` script then place in the same directory as the postmortem script.
 ### Gateway
 `--diagnostic-gateway`
 > **Note**: In order for this switch to function, make sure connections to `127.0.0.1` are not restricted on the local machine.
@@ -47,6 +49,14 @@ Enable the following if troubleshooting an issue for the following subsystems:
 ### Analytics
 `--diagnostic-analytics`
 
+### Running EDB Mustgather on it's own   
+To run the edb mustgather you need to pass the script 2 values:   
+`EDB_CLUSTER_NAMESPACE`: the namespace where the edb cluster is running (eg apic)  
+`LOG_PATH`: An **existing** folder in which you want to store the mustgather logs
+Example of how to run the edb mustgather script
+```
+    ./edb_mustgather.sh apic edb
+```
 
 ## Need help?
 -  Open an issue to submit any feedback
