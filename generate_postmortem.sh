@@ -62,7 +62,7 @@ for switch in $@; do
             ;;
         *"--diagnostic-manager"*)
             DIAG_MANAGER=1
-            EDB_CLUSTER_NAME=$(oc get cluster -n ${EDB_OP_NAMESPACE} -o=jsonpath='{.items[0].metadata.name}')
+            EDB_CLUSTER_NAME=$(oc get cluster --all-namespaces -o=jsonpath='{.items[0].metadata.name}')
             if [[ -z "$EDB_CLUSTER_NAME" ]]; then
                 COLLECT_CRUNCHY=1
                 SCRIPT_LOCATION="`pwd`/crunchy_gather.py"
