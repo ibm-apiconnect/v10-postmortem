@@ -6,6 +6,13 @@
 EDB_CLUSTER_NAMESPACE=$1
 LOG_PATH=$2
 
+if which kubectl-cnp >/dev/null; then
+    echo kubectl-cnp plugin found
+else
+    echo kubectl-cnp plugin not found, please install it from here https://www.enterprisedb.com/docs/postgres_for_kubernetes/latest/cnp-plugin
+    exit 1
+fi
+
 if [ -z "$1" ] || [ -z "$2" ]
   then
     echo "USAGE: edb_mustgather.sh <edb-cluster-namespace> <log path>"
@@ -106,7 +113,6 @@ fi
 
 if [[ -z "$EDB_BACKUP_NAMES" ]]; then
     echo "failed to find the edb cluster backups in the ${EDB_CLUSTER_NAMESPACE} namespace"
-    exit 1
 else
    gatherEDBBackupData
 fi
