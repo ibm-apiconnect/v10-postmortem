@@ -5,12 +5,14 @@
 
 EDB_CLUSTER_NAMESPACE=$1
 LOG_PATH=$2
+CNP_INSTALLED=false
 
 if which kubectl-cnp >/dev/null; then
     echo kubectl-cnp plugin found
+    CNP_INSTALLED=true
 else
     echo kubectl-cnp plugin not found, please install it from here https://www.enterprisedb.com/docs/postgres_for_kubernetes/latest/cnp-plugin
-    exit 1
+    CNP_INSTALLED=false
 fi
 
 if [ -z "$1" ] || [ -z "$2" ]
@@ -59,8 +61,10 @@ function gatherEdbOperatorData() {
 }
 
 function gatherClusterData() {
-    kubectl cnp status ${EDB_CLUSTER_NAME} -n ${EDB_CLUSTER_NAMESPACE} > ${CLUSTER}/${EDB_CLUSTER_NAME}/status.txt
-    kubectl cnp status ${EDB_CLUSTER_NAME} --verbose -n ${EDB_CLUSTER_NAMESPACE} > ${CLUSTER}/${EDB_CLUSTER_NAME}/status-verbose.txt
+    if [ "$CNP_INSTALLED" = true ]; then
+        kubectl cnp status ${EDB_CLUSTER_NAME} -n ${EDB_CLUSTER_NAMESPACE} > ${CLUSTER}/${EDB_CLUSTER_NAME}/status.txt
+        kubectl cnp status ${EDB_CLUSTER_NAME} --verbose -n ${EDB_CLUSTER_NAMESPACE} > ${CLUSTER}/${EDB_CLUSTER_NAME}/status-verbose.txt
+    fi
     kubectl get cluster -n ${EDB_CLUSTER_NAMESPACE} > ${CLUSTER}/${EDB_CLUSTER_NAME}/info.txt
     kubectl get cluster -o yaml -n ${EDB_CLUSTER_NAMESPACE} > ${CLUSTER}/${EDB_CLUSTER_NAME}/cluster.yaml
     kubectl describe cluster -n ${EDB_CLUSTER_NAMESPACE} > ${CLUSTER}/${EDB_CLUSTER_NAME}/describe.txt
