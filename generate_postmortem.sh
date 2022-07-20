@@ -28,6 +28,7 @@ for switch in $@; do
             echo -e ""
             echo -e "--collect-secrets:       Collect secrets from targeted namespaces.  Due to sensitivity of data, do not use unless requested by support."
             echo -e "--collect-crunchy:       Collect Crunchy mustgather."
+            echo -e "--collect-edb:           Collect EDB mustgather."
             echo -e ""
             echo -e "--diagnostic-all:        Set to enable all diagnostic data."
             echo -e "--diagnostic-manager:    Set to include additional manager specific data."
@@ -61,10 +62,16 @@ for switch in $@; do
             ;;
         *"--diagnostic-manager"*)
             DIAG_MANAGER=1
-            COLLECT_CRUNCHY=1
-            SCRIPT_LOCATION="`pwd`/crunchy_gather.py"
+            EDB_CLUSTER_NAME=$(oc get cluster --all-namespaces -o=jsonpath='{.items[0].metadata.name}')
+            if [[ -z "$EDB_CLUSTER_NAME" ]]; then
+                COLLECT_CRUNCHY=1
+                SCRIPT_LOCATION="`pwd`/crunchy_gather.py"
+            else
+                COLLECT_EDB=1
+                SCRIPT_LOCATION="`pwd`/edb_mustgather.sh"
+            fi 
             if [[ ! -f $SCRIPT_LOCATION ]]; then
-                echo -e "Unable to locate script [crunchy_gather.py] in current directory.  Download from GitHub repository.  Exiting..."
+                echo -e "Unable to locate script ${SCRIPT_LOCATION} in current directory.  Download from GitHub repository.  Exiting..."
                 exit 1
             fi
             ;;
@@ -114,6 +121,15 @@ for switch in $@; do
             SCRIPT_LOCATION="`pwd`/crunchy_gather.py"
             if [[ ! -f $SCRIPT_LOCATION ]]; then
                 echo -e "Unable to locate script [crunchy_gather.py] in current directory.  Download from GitHub repository.  Exiting..."
+                exit 1
+            fi
+            chmod +x $SCRIPT_LOCATION
+            ;;
+        *"--collect-edb"*)
+            COLLECT_EDB=1
+            SCRIPT_LOCATION="`pwd`/edb_mustgather.sh"
+            if [[ ! -f $SCRIPT_LOCATION ]]; then
+                echo -e "Unable to locate script [edb_mustgather.sh] in current directory.  Download from GitHub repository.  Exiting..."
                 exit 1
             fi
             chmod +x $SCRIPT_LOCATION
@@ -593,6 +609,8 @@ for NAMESPACE in $NAMESPACE_LIST; do
 
     K8S_NAMESPACES_CRUNCHY_DATA="${K8S_NAMESPACES_SPECIFIC}/crunchy"
 
+    K8S_NAMESPACES_EDB="${K8S_NAMESPACES_SPECIFIC}/edb"
+
     K8S_NAMESPACES_DAEMONSET_DATA="${K8S_NAMESPACES_SPECIFIC}/daemonsets"
     K8S_NAMESPACES_DAEMONSET_YAML_OUTPUT="${K8S_NAMESPACES_DAEMONSET_DATA}/yaml"
     K8S_NAMESPACES_DAEMONSET_DESCRIBE_DATA="${K8S_NAMESPACES_DAEMONSET_DATA}/describe"
@@ -655,6 +673,8 @@ for NAMESPACE in $NAMESPACE_LIST; do
     mkdir -p $K8S_NAMESPACES_CRONJOB_DESCRIBE_DATA
 
     mkdir -p $K8S_NAMESPACES_CRUNCHY_DATA
+
+    mkdir -p $K8S_NAMESPACES_EDB
 
     mkdir -p $K8S_NAMESPACES_DAEMONSET_YAML_OUTPUT
     mkdir -p $K8S_NAMESPACES_DAEMONSET_DESCRIBE_DATA
@@ -802,6 +822,11 @@ for NAMESPACE in $NAMESPACE_LIST; do
     #grab crunchy mustgather
     if [[ $COLLECT_CRUNCHY -eq 1 && "$NAMESPACE" != "kube-system" ]]; then
         $CURRENT_PATH/crunchy_gather.py -n $NAMESPACE -l 5 -c kubectl -o $K8S_NAMESPACES_CRUNCHY_DATA &> "${K8S_NAMESPACES_CRUNCHY_DATA}/crunchy-collect.log"
+    fi
+
+    #grab edb mustgather
+    if [[ $COLLECT_EDB -eq 1 && "$NAMESPACE" != "kube-system" ]]; then
+        $CURRENT_PATH/edb_mustgather.sh $NAMESPACE $K8S_NAMESPACES_EDB
     fi
 
     #grab daemonset data
