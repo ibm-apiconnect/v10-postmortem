@@ -61,7 +61,8 @@ Example of how to run the edb mustgather script
 ```
 
 ## Need help?
--  Open an issue to submit any feedback
+-  Open a ticket with IBM Support in the IBM API Connect product
+-  If you do not have access to IBM Support, report an issue to submit any feedback
 -  Problem with the script?  Run the following command:
 ```shell
 ./generate_postmortem.sh --debug 2>&1 | tee /tmp/debug.log
