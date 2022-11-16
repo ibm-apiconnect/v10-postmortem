@@ -1464,8 +1464,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
     fi
 
 #------------------------------------ Pull Data CP4i specific data ------------------------------------
-    kubectl get ns $NAMESPACE &>/dev/null
-    if [[ $? -eq 0 ]]; then
+    if [[ "$NAMESPACE" == "ibm-common-services" ]]; then
         ICS_NAMESPACE="${K8S_NAMESPACES}/ibm-common-services"
 
         ICS_INSTALL_PLAN_DATA="${ICS_NAMESPACE}/install_plans"
