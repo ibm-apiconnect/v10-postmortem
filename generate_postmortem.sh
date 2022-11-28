@@ -967,6 +967,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
                             subManager=$SUBSYS_MANAGER
                             ;;
                         *"${SUBSYS_ANALYTICS}"*)
+                            #This sometimes doesn't work due to truncation, see INSTANCE_LABEL below
                             SUBFOLDER="analytics"
                             subAnalytics=$SUBSYS_ANALYTICS
                             IS_ANALYTICS=1
@@ -1050,6 +1051,14 @@ for NAMESPACE in $NAMESPACE_LIST; do
                                 SUBFOLDER="other"
                             fi
                     esac
+
+                    # Following is to fix the case where analytics instance name is truncated.
+                    INSTANCE_LABEL=`kubectl get po -o jsonpath='{.metadata.labels.app\.kubernetes\.io\/instance}' $pod`
+                    if [[ $INSTANCE_LABEL == $SUBSYS_ANALYTICS ]]; then
+                        SUBFOLDER="analytics"
+                        subAnalytics=$SUBSYS_ANALYTICS
+                        IS_ANALYTICS=1
+                    fi
 
                     DESCRIBE_TARGET_PATH="${K8S_NAMESPACES_POD_DESCRIBE_DATA}/${SUBFOLDER}"
                     LOG_TARGET_PATH="${K8S_NAMESPACES_POD_LOG_DATA}/${SUBFOLDER}";;
@@ -1196,7 +1205,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
                 ANALYTICS_DIAGNOSTIC_DATA="${K8S_NAMESPACES_POD_DIAGNOSTIC_DATA}/analytics/${pod}"
                 mkdir -p $ANALYTICS_DIAGNOSTIC_DATA
 
-                if [[ "$pod" == *"storage-data"* || "$pod" == *"storage-basic"* || "$pod" == *"storage-shared"* ]]; then 
+                if [[ "$pod" == *"storage-"* ]]; then
                     OUTPUT1=`kubectl exec -n $NAMESPACE $pod -- curl_es -s "_cluster/health?pretty"`
                     echo "$OUTPUT1" >"${ANALYTICS_DIAGNOSTIC_DATA}/curl-cluster_health.out"
                     OUTPUT1=`kubectl exec -n $NAMESPACE $pod -- curl_es -s "_cat/nodes?v"`
