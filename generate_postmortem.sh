@@ -918,6 +918,9 @@ for NAMESPACE in $NAMESPACE_LIST; do
         echo "$OUTPUT" > "${K8S_NAMESPACES_POD_DATA}/pods.out"
         while read line; do
             pod=`echo "$line" | awk -F ' ' '{print $1}'`
+            if [[ "$pod" == "NAME" ]]; then
+                continue
+            fi
             ready=`echo "$line" | awk -F ' ' '{print $2}' | awk -F'/' '{ print ($1==$2) ? "1" : "0" }'`
             status=`echo "$line" | awk -F ' ' '{print $3}'`
             node=`echo "$line" | awk -F ' ' '{print $7}'`
