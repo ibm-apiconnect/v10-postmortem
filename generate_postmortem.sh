@@ -1206,17 +1206,17 @@ for NAMESPACE in $NAMESPACE_LIST; do
                 mkdir -p $ANALYTICS_DIAGNOSTIC_DATA
 
                 if [[ "$pod" == *"storage-"* ]]; then
-                    OUTPUT1=`kubectl exec -n $NAMESPACE $pod -- curl -k --cert /etc/velox/certs/client/tls.crt --key /etc/velox/certs/client/tls.key "https://localhost:9200/_cluster/health?pretty"`
+                    OUTPUT1=`kubectl exec -n $NAMESPACE $pod -- curl -ks --cert /etc/velox/certs/client/tls.crt --key /etc/velox/certs/client/tls.key "https://localhost:9200/_cluster/health?pretty"`
                     echo "$OUTPUT1" >"${ANALYTICS_DIAGNOSTIC_DATA}/curl-cluster_health.out"
-                    OUTPUT1=`kubectl exec -n $NAMESPACE $pod -- curl -k --cert /etc/velox/certs/client/tls.crt --key /etc/velox/certs/client/tls.key "https://localhost:9200/_cat/nodes?v"`
+                    OUTPUT1=`kubectl exec -n $NAMESPACE $pod -- curl -ks --cert /etc/velox/certs/client/tls.crt --key /etc/velox/certs/client/tls.key "https://localhost:9200/_cat/nodes?v"`
                     echo "$OUTPUT1" >"${ANALYTICS_DIAGNOSTIC_DATA}/curl-cat_nodes.out"
-                    OUTPUT1=`kubectl exec -n $NAMESPACE $pod -- curl -k --cert /etc/velox/certs/client/tls.crt --key /etc/velox/certs/client/tls.key "https://localhost:9200/_cat/indices?v"`
+                    OUTPUT1=`kubectl exec -n $NAMESPACE $pod -- curl -ks --cert /etc/velox/certs/client/tls.crt --key /etc/velox/certs/client/tls.key "https://localhost:9200/_cat/indices?v"`
                     echo "$OUTPUT1" >"${ANALYTICS_DIAGNOSTIC_DATA}/curl-cat_indices.out"
-                    OUTPUT1=`kubectl exec -n $NAMESPACE $pod -- curl -k --cert /etc/velox/certs/client/tls.crt --key /etc/velox/certs/client/tls.key "https://localhost:9200/_cat/shards?v"`
+                    OUTPUT1=`kubectl exec -n $NAMESPACE $pod -- curl -ks --cert /etc/velox/certs/client/tls.crt --key /etc/velox/certs/client/tls.key "https://localhost:9200/_cat/shards?v"`
                     echo "$OUTPUT1" >"${ANALYTICS_DIAGNOSTIC_DATA}/curl-cat_shards.out"
-                    OUTPUT1=`kubectl exec -n $NAMESPACE $pod -- curl -k --cert /etc/velox/certs/client/tls.crt --key /etc/velox/certs/client/tls.key "https://localhost:9200/_alias?pretty"`
+                    OUTPUT1=`kubectl exec -n $NAMESPACE $pod -- curl -ks --cert /etc/velox/certs/client/tls.crt --key /etc/velox/certs/client/tls.key "https://localhost:9200/_alias?pretty"`
                     echo "$OUTPUT1" >"${ANALYTICS_DIAGNOSTIC_DATA}/curl-alias.out"
-                    OUTPUT1=`kubectl exec -n $NAMESPACE $pod -- curl -k --cert /etc/velox/certs/client/tls.crt --key /etc/velox/certs/client/tls.key "https://localhost:9200/_cluster/allocation/explain?pretty"`
+                    OUTPUT1=`kubectl exec -n $NAMESPACE $pod -- curl -ks --cert /etc/velox/certs/client/tls.crt --key /etc/velox/certs/client/tls.key "https://localhost:9200/_cluster/allocation/explain?pretty"`
                     echo "$OUTPUT1" >"${ANALYTICS_DIAGNOSTIC_DATA}/curl-cluster_allocation_explain.out"
                 elif [[ "$pod" == *"ingestion"* ]]; then
                     OUTPUT1=`kubectl exec -n $NAMESPACE $pod -- curl -s "localhost:9600/_node/stats?pretty"`
