@@ -249,6 +249,11 @@ if [[ $? -eq 0 && $SPECIFIC_NAMESPACES -ne 1 ]]; then
     NAMESPACE_LIST+=" rook-ceph-system"
 fi
 
+kubectl get ns 2>/dev/null | grep -q "ibm-common-services"
+if [[ $? -eq 0 && $SPECIFIC_NAMESPACES -ne 1 ]]; then
+    NAMESPACE_LIST+=" ibm-common-services"
+fi
+
 #================================================= pull ova data =================================================
 if [[ $IS_OVA -eq 1 ]]; then
     OVA_DATA="${TEMP_PATH}/ova"
@@ -1469,83 +1474,82 @@ for NAMESPACE in $NAMESPACE_LIST; do
             fi
         done
     fi
-    #^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+#------------------------------------ Pull Data CP4i specific data ------------------------------------
+    if [[ "$NAMESPACE" == "ibm-common-services" ]]; then
+        ICS_NAMESPACE="${K8S_NAMESPACES}/ibm-common-services"
+
+        ICS_INSTALL_PLAN_DATA="${ICS_NAMESPACE}/install_plans"
+        ICS_INSTALL_PLAN_DESCRIBE_DATA="${ICS_INSTALL_PLAN_DATA}/describe"
+        ICS_INSTALL_PLAN_YAML_OUTPUT="${ICS_INSTALL_PLAN_DATA}/yaml"
+
+        ICS_SUBSCRIPTION_DATA="${ICS_NAMESPACE}/subscriptions"
+        ICS_SUBSCRIPTION_DESCRIBE_DATA="${ICS_SUBSCRIPTION_DATA}/describe"
+        ICS_SUBSCRIPTION_YAML_OUTPUT="${ICS_SUBSCRIPTION_DATA}/yaml"
+
+        ICS_CLUSTER_SERVICE_VERSION_DATA="${ICS_NAMESPACE}/cluster_service_version"
+        ICS_CLUSTER_SERVICE_VERSION_DESCRIBE_DATA="${ICS_CLUSTER_SERVICE_VERSION_DATA}/describe"
+        ICS_CLUSTER_SERVICE_VERSION_YAML_OUTPUT="${ICS_CLUSTER_SERVICE_VERSION_DATA}/yaml"
+
+        mkdir -p $ICS_INSTALL_PLAN_DESCRIBE_DATA
+        mkdir -p $ICS_INSTALL_PLAN_YAML_OUTPUT
+
+        mkdir -p $ICS_SUBSCRIPTION_DESCRIBE_DATA
+        mkdir -p $ICS_SUBSCRIPTION_YAML_OUTPUT
+
+        mkdir -p $ICS_CLUSTER_SERVICE_VERSION_DESCRIBE_DATA
+        mkdir -p $ICS_CLUSTER_SERVICE_VERSION_YAML_OUTPUT
+
+        OUTPUT=`kubectl get InstallPlan -n $NAMESPACE 2>/dev/null`
+        if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
+            echo "$OUTPUT" > "${ICS_INSTALL_PLAN_DATA}/install_plans.out"
+            while read line; do
+                ip=`echo "$line" | cut -d' ' -f1`
+                kubectl describe InstallPlan $ip -n $NAMESPACE &>"${ICS_INSTALL_PLAN_DESCRIBE_DATA}/${ip}.out"
+                [ $? -eq 0 ] || rm -f "${ICS_INSTALL_PLAN_DESCRIBE_DATA}/${ip}.out"
+
+                kubectl get InstallPlan $ip -o yaml -n $NAMESPACE &>"${ICS_INSTALL_PLAN_YAML_OUTPUT}/${ip}.out"
+                [ $? -eq 0 ] || rm -f "${ICS_INSTALL_PLAN_YAML_OUTPUT}/${ip}.out"
+            done <<< "$OUTPUT"
+        else
+            rm -fr $ICS_INSTALL_PLAN_DATA
+        fi
+
+        OUTPUT=`kubectl get Subscription -n $NAMESPACE 2>/dev/null`
+        if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
+            echo "$OUTPUT" > "${ICS_SUBSCRIPTION_DATA}/subscriptions.out"
+            while read line; do
+                sub=`echo "$line" | cut -d' ' -f1`
+                kubectl describe Subscription $sub -n $NAMESPACE &>"${ICS_SUBSCRIPTION_DESCRIBE_DATA}/${sub}.out"
+                [ $? -eq 0 ] || rm -f "${ICS_SUBSCRIPTION_DESCRIBE_DATA}/${sub}.out"
+
+                kubectl get Subscription $sub -o yaml -n $NAMESPACE &>"${ICS_SUBSCRIPTION_YAML_OUTPUT}/${sub}.out"
+                [ $? -eq 0 ] || rm -f "${ICS_SUBSCRIPTION_YAML_OUTPUT}/${sub}.out"
+            done <<< "$OUTPUT"
+        else
+            rm -fr $ICS_INSTALL_PLAN_DATA
+        fi
+
+        OUTPUT=`kubectl get ClusterServiceVersion -n $NAMESPACE 2>/dev/null`
+        if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
+            echo "$OUTPUT" > "${ICS_CLUSTER_SERVICE_VERSION_DATA}/cluster_service_version.out"
+            while read line; do
+                csv=`echo "$line" | cut -d' ' -f1`
+                kubectl describe ClusterServiceVersion $csv -n $NAMESPACE &>"${ICS_CLUSTER_SERVICE_VERSION_DESCRIBE_DATA}/${csv}.out"
+                [ $? -eq 0 ] || rm -f "${ICS_CLUSTER_SERVICE_VERSION_DESCRIBE_DATA}/${csv}.out"
+
+                kubectl get ClusterServiceVersion $csv -o yaml -n $NAMESPACE &>"${ICS_CLUSTER_SERVICE_VERSION_YAML_OUTPUT}/${csv}.out"
+                [ $? -eq 0 ] || rm -f "${ICS_CLUSTER_SERVICE_VERSION_YAML_OUTPUT}/${csv}.out"
+            done <<< "$OUTPUT"
+        else
+            rm -fr $ICS_INSTALL_PLAN_DATA
+        fi
+    fi
+#------------------------------------------------------------------------------------------------------
+
 done
 #------------------------------------------------------------------------------------------------------
 
-#------------------------------------ Pull Data CP4i specific data ------------------------------------
-NAMESPACE="ibm-common-services"
-kubectl get ns $NAMESPACE &>/dev/null
-if [[ $? -eq 0 ]]; then
-    ICS_NAMESPACE="${K8S_NAMESPACES}/ibm-common-services"
-
-    ICS_INSTALL_PLAN_DATA="${ICS_NAMESPACE}/install_plans"
-    ICS_INSTALL_PLAN_DESCRIBE_DATA="${ICS_INSTALL_PLAN_DATA}/describe"
-    ICS_INSTALL_PLAN_YAML_OUTPUT="${ICS_INSTALL_PLAN_DATA}/yaml"
-
-    ICS_SUBSCRIPTION_DATA="${ICS_NAMESPACE}/subscriptions"
-    ICS_SUBSCRIPTION_DESCRIBE_DATA="${ICS_SUBSCRIPTION_DATA}/describe"
-    ICS_SUBSCRIPTION_YAML_OUTPUT="${ICS_SUBSCRIPTION_DATA}/yaml"
-
-    ICS_CLUSTER_SERVICE_VERSION_DATA="${ICS_NAMESPACE}/cluster_service_version"
-    ICS_CLUSTER_SERVICE_VERSION_DESCRIBE_DATA="${ICS_CLUSTER_SERVICE_VERSION_DATA}/describe"
-    ICS_CLUSTER_SERVICE_VERSION_YAML_OUTPUT="${ICS_CLUSTER_SERVICE_VERSION_DATA}/yaml"
-
-    mkdir -p $ICS_INSTALL_PLAN_DESCRIBE_DATA
-    mkdir -p $ICS_INSTALL_PLAN_YAML_OUTPUT
-
-    mkdir -p $ICS_SUBSCRIPTION_DESCRIBE_DATA
-    mkdir -p $ICS_SUBSCRIPTION_YAML_OUTPUT
-
-    mkdir -p $ICS_CLUSTER_SERVICE_VERSION_DESCRIBE_DATA
-    mkdir -p $ICS_CLUSTER_SERVICE_VERSION_YAML_OUTPUT
-
-    OUTPUT=`kubectl get InstallPlan -n $NAMESPACE 2>/dev/null`
-    if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
-        echo "$OUTPUT" > "${ICS_INSTALL_PLAN_DATA}/install_plans.out"
-        while read line; do
-            ip=`echo "$line" | cut -d' ' -f1`
-            kubectl describe InstallPlan $ip -n $NAMESPACE &>"${ICS_INSTALL_PLAN_DESCRIBE_DATA}/${ip}.out"
-            [ $? -eq 0 ] || rm -f "${ICS_INSTALL_PLAN_DESCRIBE_DATA}/${ip}.out"
-
-            kubectl get InstallPlan $ip -o yaml -n $NAMESPACE &>"${ICS_INSTALL_PLAN_YAML_OUTPUT}/${ip}.out"
-            [ $? -eq 0 ] || rm -f "${ICS_INSTALL_PLAN_YAML_OUTPUT}/${ip}.out"
-        done <<< "$OUTPUT"
-    else
-        rm -fr $ICS_INSTALL_PLAN_DATA
-    fi
-
-    OUTPUT=`kubectl get Subscription -n $NAMESPACE 2>/dev/null`
-    if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
-        echo "$OUTPUT" > "${ICS_SUBSCRIPTION_DATA}/subscriptions.out"
-        while read line; do
-            sub=`echo "$line" | cut -d' ' -f1`
-            kubectl describe Subscription $sub -n $NAMESPACE &>"${ICS_SUBSCRIPTION_DESCRIBE_DATA}/${sub}.out"
-            [ $? -eq 0 ] || rm -f "${ICS_SUBSCRIPTION_DESCRIBE_DATA}/${sub}.out"
-
-            kubectl get Subscription $sub -o yaml -n $NAMESPACE &>"${ICS_SUBSCRIPTION_YAML_OUTPUT}/${sub}.out"
-            [ $? -eq 0 ] || rm -f "${ICS_SUBSCRIPTION_YAML_OUTPUT}/${sub}.out"
-        done <<< "$OUTPUT"
-    else
-        rm -fr $ICS_INSTALL_PLAN_DATA
-    fi
-
-    OUTPUT=`kubectl get ClusterServiceVersion -n $NAMESPACE 2>/dev/null`
-    if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
-        echo "$OUTPUT" > "${ICS_CLUSTER_SERVICE_VERSION_DATA}/cluster_service_version.out"
-        while read line; do
-            csv=`echo "$line" | cut -d' ' -f1`
-            kubectl describe ClusterServiceVersion $csv -n $NAMESPACE &>"${ICS_CLUSTER_SERVICE_VERSION_DESCRIBE_DATA}/${csv}.out"
-            [ $? -eq 0 ] || rm -f "${ICS_CLUSTER_SERVICE_VERSION_DESCRIBE_DATA}/${csv}.out"
-
-            kubectl get ClusterServiceVersion $csv -o yaml -n $NAMESPACE &>"${ICS_CLUSTER_SERVICE_VERSION_YAML_OUTPUT}/${csv}.out"
-            [ $? -eq 0 ] || rm -f "${ICS_CLUSTER_SERVICE_VERSION_YAML_OUTPUT}/${csv}.out"
-        done <<< "$OUTPUT"
-    else
-        rm -fr $ICS_INSTALL_PLAN_DATA
-    fi
-fi
-#------------------------------------------------------------------------------------------------------
 #=================================================================================================================
 
 #write out data to zip file
