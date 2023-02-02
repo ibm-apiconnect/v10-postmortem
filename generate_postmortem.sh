@@ -8,6 +8,8 @@
 #                 Kenny Nguyen, kennyqn@ibm.com
 #
 
+#test
+
 #parse passed arguments
 for switch in $@; do
     case $switch in
