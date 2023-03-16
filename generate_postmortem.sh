@@ -1376,24 +1376,24 @@ for NAMESPACE in $NAMESPACE_LIST; do
 
     #grab secrets
     OUTPUT=`kubectl get secrets -n $NAMESPACE 2>/dev/null`
-    if [[ $? -eq 0 && ${#OUTPUT1} -gt 0 ]]; then
+    if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
         echo "$OUTPUT" > "${K8S_NAMESPACES_SECRET_DATA}/secrets.out"
 
-        if [[ $COLLECT_SECRETS -eq 1 ]]; then
-            while read line; do
-                secret=`echo "$line" | cut -d' ' -f1`
+        while read line; do
+            secret=`echo "$line" | cut -d' ' -f1`
 
-                kubectl describe secret $secret -n $NAMESPACE &>"${K8S_NAMESPACES_SECRET_DESCRIBE_DATA}/${secret}.out"
-                [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_SECRET_DESCRIBE_DATA}/${secret}.out"
+            kubectl describe secret $secret -n $NAMESPACE &>"${K8S_NAMESPACES_SECRET_DESCRIBE_DATA}/${secret}.out"
+            [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_SECRET_DESCRIBE_DATA}/${secret}.out"
 
+            if [[ $COLLECT_SECRETS -eq 1 ]]; then
                 kubectl get secret $secret -o yaml -n $NAMESPACE &>"${K8S_NAMESPACES_SECRET_YAML_OUTPUT}/${secret}.yaml"
                 [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_SECRET_YAML_OUTPUT}/${secret}.yaml"
+            else
+                ( kubectl get secret $secret -o yaml -n $NAMESPACE | grep -v '.key:' ) &>"${K8S_NAMESPACES_SECRET_YAML_OUTPUT}/sanitised.${secret}.yaml"
+                [ ${PIPESTATUS[0]} -eq 0 ] || rm -f "${K8S_NAMESPACES_SECRET_YAML_OUTPUT}/sanitised.${secret}.yaml"
+            fi
 
-            done <<< "$OUTPUT"
-        else
-            rm -fr $K8S_NAMESPACES_SECRET_DESCRIBE_DATA
-            rm -fr $K8S_NAMESPACES_SECRET_YAML_OUTPUT
-        fi
+        done <<< "$OUTPUT"
     else
         rm -fr $K8S_NAMESPACES_SECRET_DATA
     fi
