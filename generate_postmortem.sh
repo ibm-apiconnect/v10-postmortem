@@ -46,7 +46,7 @@ for switch in $@; do
             ;;
         *"--ova"*)
             if [[ $EUID -ne 0 ]]; then
-                echo "This script must be run as root." 
+                echo "This script must be run as root."
                 exit 1
             fi
 
@@ -69,7 +69,7 @@ for switch in $@; do
             else
                 COLLECT_EDB=1
                 SCRIPT_LOCATION="`pwd`/edb_mustgather.sh"
-            fi 
+            fi
             if [[ ! -f $SCRIPT_LOCATION ]]; then
                 echo -e "Unable to locate script ${SCRIPT_LOCATION} in current directory.  Download from GitHub repository.  Exiting..."
                 exit 1
@@ -320,7 +320,7 @@ if [[ $AUTO_DETECT -eq 1 ]]; then
     CLUSTER_LIST=(ManagementCluster AnalyticsCluster PortalCluster GatewayCluster EventEndpointManager EventGatewayCluster)
     EVENT_PREFIX="eventendpo"
     ns_matches=""
-    
+
 
     while read line; do
         ns=`echo "${line}" | awk '{print $1}'`
@@ -392,7 +392,7 @@ if [[ $AUTO_DETECT -eq 1 ]]; then
                             ((SUBSYS_EVENT_COUNT=SUBSYS_EVENT_COUNT+1))
                         ;;
                     esac
-                    
+
                     if [[ "${ns_matches}" != *"${ns}"* ]]; then
                         if [[ ${#ns_matches} -eq 0 ]]; then
                             ns_matches=$ns
@@ -407,7 +407,7 @@ if [[ $AUTO_DETECT -eq 1 ]]; then
 
     space_count=`echo "${ns_matches}" | tr -cd ' \t' | wc -c`
     [ $SPECIFIC_NAMESPACES -eq 1 ] || echo -e "Auto-detected namespaces [${ns_matches}]."
-    
+
     if [[ $space_count -gt 0 && $NO_PROMPT -eq 0 ]]; then
         read -p "Proceed with data collection (y/n)? " yn
         case $yn in
@@ -573,9 +573,9 @@ if [[ $PERFORMANCE_CHECK -eq 1 ]]; then
         ETCD_CA_FILE=`kubectl describe pod -n kube-system ${ETCD_POD} | grep "\--trusted-ca-file" | cut -f2 -d"=" 2>/dev/null`
         ETCD_CERT_FILE=`kubectl describe pod -n kube-system ${ETCD_POD} | grep "\--cert-file" | cut -f2 -d"=" 2>/dev/null`
         ETCD_KEY_FILE=`kubectl describe pod -n kube-system ${ETCD_POD} | grep "\--key-file" | cut -f2 -d"=" 2>/dev/null`
-        
+
         OUTPUT=`kubectl exec -n kube-system ${ETCD_POD} -- sh -c "export ETCDCTL_API=3; etcdctl member list --cacert=${ETCD_CA_FILE} --cert=${ETCD_CERT_FILE} --key=${ETCD_KEY_FILE} 2>/dev/null"`
-        
+
         # parsing endpoints from etcd member list
         ENDPOINTS=''
         while read line; do
@@ -606,7 +606,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
     K8S_NAMESPACES_SPECIFIC="${K8S_NAMESPACES}/${NAMESPACE}"
 
     K8S_NAMESPACES_LIST_DATA="${K8S_NAMESPACES_SPECIFIC}/lists"
-    
+
     K8S_NAMESPACES_CLUSTER_DATA="${K8S_NAMESPACES_SPECIFIC}/clusters"
     K8S_NAMESPACES_CLUSTER_YAML_OUTPUT="${K8S_NAMESPACES_CLUSTER_DATA}/yaml"
     K8S_NAMESPACES_CLUSTER_DESCRIBE_DATA="${K8S_NAMESPACES_CLUSTER_DATA}/describe"
@@ -637,7 +637,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
     K8S_NAMESPACES_JOB_DATA="${K8S_NAMESPACES_SPECIFIC}/jobs"
     K8S_NAMESPACES_JOB_DESCRIBE_DATA="${K8S_NAMESPACES_JOB_DATA}/describe"
     K8S_NAMESPACES_JOB_YAML_OUTPUT="${K8S_NAMESPACES_JOB_DATA}/yaml"
-    
+
     K8S_NAMESPACES_POD_DATA="${K8S_NAMESPACES_SPECIFIC}/pods"
     K8S_NAMESPACES_POD_DESCRIBE_DATA="${K8S_NAMESPACES_POD_DATA}/describe"
     K8S_NAMESPACES_POD_DIAGNOSTIC_DATA="${K8S_NAMESPACES_POD_DATA}/diagnostic"
@@ -1071,7 +1071,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
                     DESCRIBE_TARGET_PATH="${K8S_NAMESPACES_POD_DESCRIBE_DATA}/${SUBFOLDER}"
                     LOG_TARGET_PATH="${K8S_NAMESPACES_POD_LOG_DATA}/${SUBFOLDER}";;
             esac
-            
+
             #make sure directories exist
             if [[ ! -d "$DESCRIBE_TARGET_PATH" ]]; then
                 mkdir -p $DESCRIBE_TARGET_PATH
@@ -1106,7 +1106,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
                 #df
                 DB_DF_OUTPUT=`kubectl exec -n $NAMESPACE ${pod} -c database -- df -h 2>"/dev/null"`
                 echo "$DB_DF_OUTPUT" > $health_dir/df.out
-                
+
                 #pg wal dir count
                 PG_WAL_DIR_COUNT=`kubectl exec -n $NAMESPACE ${pod} -c database -- ls -lrt /pgwal/${POSTGRES_PGWAL_NAME}/ | wc -l 2>"/dev/null"`
                 echo "$PG_WAL_DIR_COUNT" > $health_dir/pgwal-dir-count.out
@@ -1161,7 +1161,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
 
                 #only proceed with error report if response status code is 200
                 if [[ $response -eq 200 ]]; then
-                    
+
                     #pull error report
                     echo -e "Pausing for error report to generate..."
                     sleep $ERROR_REPORT_SLEEP_TIMEOUT
@@ -1280,7 +1280,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
                             "db")
                                 mkdir -p $PORTAL_DIAGNOSTIC_DATA
                                 OUTPUT1=`kubectl exec -n $NAMESPACE -c $container $pod -- bash -ic "mysqldump portal" 2>"/dev/null"`
-                                echo "$OUTPUT1" >"${PORTAL_DIAGNOSTIC_DATA}/portal.dump" 
+                                echo "$OUTPUT1" >"${PORTAL_DIAGNOSTIC_DATA}/portal.dump"
                                 OUTPUT1=`kubectl exec -n $NAMESPACE -c $container $pod -- bash -ic "ls -lRAi --author --full-time" 2>"/dev/null"`
                                 echo "$OUTPUT1" >"${PORTAL_DIAGNOSTIC_DATA}/listing-all.out"
                                 OUTPUT1=`kubectl exec -n $NAMESPACE -c $container $pod -- bash -ic "ps -efHww --sort=-pcpu" 2>"/dev/null"`
@@ -1360,7 +1360,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
     else
         rm -fr $K8S_NAMESPACES_ROLEBINDING_DATA
     fi
-    
+
     #grab role service account data
     OUTPUT=`kubectl get sa -n $NAMESPACE 2>/dev/null`
     if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
@@ -1378,24 +1378,36 @@ for NAMESPACE in $NAMESPACE_LIST; do
     OUTPUT=`kubectl get secrets -n $NAMESPACE 2>/dev/null`
     if [[ $? -eq 0 && ${#OUTPUT1} -gt 0 ]]; then
         echo "$OUTPUT" > "${K8S_NAMESPACES_SECRET_DATA}/secrets.out"
+        while read line; do
+            secret=`echo "$line" | cut -d' ' -f1`
 
-        if [[ $COLLECT_SECRETS -eq 1 ]]; then
+            # We can always describe the secret as there is no security exposure here
+            kubectl describe secret $secret -n $NAMESPACE &>"${K8S_NAMESPACES_SECRET_DESCRIBE_DATA}/${secret}.out"
+            [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_SECRET_DESCRIBE_DATA}/${secret}.out"
+
+            if [[ $COLLECT_SECRETS -eq 1 ]]; then
+                kubectl get secret $secret -o yaml -n $NAMESPACE &>"${K8S_NAMESPACES_SECRET_YAML_OUTPUT}/${secret}.yaml"
+                [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_SECRET_YAML_OUTPUT}/${secret}.yaml"
+            fi
+        done <<< "$OUTPUT"
+    else
+        rm -fr $K8S_NAMESPACES_SECRET_DATA
+    fi
+
+    if [[ $COLLECT_SECRETS -ne 1 ]]; then
+        #grab tls secrets and only the ca.crt and tls.crt fields
+        OUTPUT=`kubectl get secrets -n $NAMESPACE --field-selector type=kubernetes.io/tls 2>/dev/null`
+        if [[ $? -eq 0 && ${#OUTPUT1} -gt 0 ]]; then
             while read line; do
                 secret=`echo "$line" | cut -d' ' -f1`
 
-                kubectl describe secret $secret -n $NAMESPACE &>"${K8S_NAMESPACES_SECRET_DESCRIBE_DATA}/${secret}.out"
-                [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_SECRET_DESCRIBE_DATA}/${secret}.out"
+                # No need for describe as that was done in the previous block
 
-                kubectl get secret $secret -o yaml -n $NAMESPACE &>"${K8S_NAMESPACES_SECRET_YAML_OUTPUT}/${secret}.yaml"
+                # Get only type, name, namespace, data["tls.crt"] and data["ca.crt"] fields
+                kubectl get secret $secret -n $NAMESPACE -o jsonpath='type: {.type}{"\n"}metadata:{"\n"}  name: {.metadata.name}{"\n"}  namespace: {.metadata.namespace}{"\n"}data:{"\n"}  ca.crt: {.data.ca\.crt}{"\n"}  tls.crt: {.data.tls\.crt}{"\n"}' &>"${K8S_NAMESPACES_SECRET_YAML_OUTPUT}/${secret}.yaml"
                 [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_SECRET_YAML_OUTPUT}/${secret}.yaml"
-
             done <<< "$OUTPUT"
-        else
-            rm -fr $K8S_NAMESPACES_SECRET_DESCRIBE_DATA
-            rm -fr $K8S_NAMESPACES_SECRET_YAML_OUTPUT
         fi
-    else
-        rm -fr $K8S_NAMESPACES_SECRET_DATA
     fi
 
     #grab service data
@@ -1404,7 +1416,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
         echo "$OUTPUT" > "${K8S_NAMESPACES_SERVICE_DATA}/services.out"
         while read line; do
             svc=`echo "$line" | cut -d' ' -f1`
-            
+
             kubectl describe svc $svc -n $NAMESPACE &>"${K8S_NAMESPACES_SERVICE_DESCRIBE_DATA}/${svc}.out"
             [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_SERVICE_DESCRIBE_DATA}/${svc}.out"
 
@@ -1447,7 +1459,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
 
                     LOG_FILES=`ls -1 $TARGET_DIRECTORY | egrep "${s}.*www.*${container}"`
                     grep . $LOG_FILES | sed 's/:\[/[ /' | sort -k5,6 >$INTERLACED_LOG_FILE
-                    
+
                     cd $tmpPortalPath
                     OUTPUT=`sed -E "s/\[([ a-z0-9_\-]*) std(out|err)].*/\1/" $INTERLACED_LOG_FILE | sed 's/^ *//' | awk -F ' ' '{print $NF}' | sort -u`
                     while read tag; do
