@@ -266,10 +266,13 @@ if [[ $IS_OVA -eq 1 ]]; then
     sudo apic status 1>"${OVA_DATA}/status.out" 2>/dev/null
 
     #grab health-check
-    sudo apic health-check 1>"${OVA_DATA}/health-check.out" 2>/dev/null
+    sudo apic health-check -v 1>"${OVA_DATA}/health-check.out" 2>/dev/null
 
     #grab subsystem history
     sudo apic subsystem 1>"${OVA_DATA}/subsystem-history.out" 2>/dev/null
+
+    #grab CR yaml from /var/lib/apiconnect/subsystem/manifests
+    sudo cp /var/lib/apiconnect/subsystem/manifests/"$(ls -1 /var/lib/apiconnect/subsystem/manifests | tail -n 1)" "${OVA_DATA}/subsystem-cr.yaml" 2>/dev/null
 
     #grab bash history
     if [[ $NO_HISTORY -ne 1 ]]; then
