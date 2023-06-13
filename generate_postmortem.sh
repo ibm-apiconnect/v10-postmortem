@@ -745,8 +745,12 @@ for NAMESPACE in $NAMESPACE_LIST; do
     [[ $? -ne 0 || ${#OUTPUT} -eq 0 ]] ||  echo "$OUTPUT" > "${K8S_NAMESPACES_LIST_DATA}/hpa.out"
     OUTPUT=`kubectl get validatingwebhookconfiguration -n $NAMESPACE 2>/dev/null`
     [[ $? -ne 0 || ${#OUTPUT} -eq 0 ]] ||  echo "$OUTPUT" > "${K8S_NAMESPACES_LIST_DATA}/validatingwebhookconfiguration.out"
+    OUTPUT=`kubectl get validatingwebhookconfiguration -oyaml -n $NAMESPACE 2>/dev/null`
+    [[ $? -ne 0 || ${#OUTPUT} -eq 0 ]] ||  echo "$OUTPUT" > "${K8S_NAMESPACES_LIST_DATA}/validatingwebhookconfigurationyaml.out"
     OUTPUT=`kubectl get mutatingwebhookconfiguration -n $NAMESPACE 2>/dev/null`
     [[ $? -ne 0 || ${#OUTPUT} -eq 0 ]] ||  echo "$OUTPUT" > "${K8S_NAMESPACES_LIST_DATA}/mutatingwebhookconfiguration.out"
+    OUTPUT=`kubectl get mutatingwebhookconfiguration -oyaml -n $NAMESPACE 2>/dev/null`
+    [[ $? -ne 0 || ${#OUTPUT} -eq 0 ]] ||  echo "$OUTPUT" > "${K8S_NAMESPACES_LIST_DATA}/mutatingwebhookconfigurationyaml.out"
 
     #grab ingress/routes then check each
     OUTPUT=`kubectl get ingress -n $NAMESPACE 2>/dev/null`
