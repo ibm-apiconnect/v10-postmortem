@@ -449,6 +449,12 @@ K8S_CLUSTER_STORAGECLASS_DESCRIBE_DATA="${K8S_CLUSTER_STORAGECLASS_DATA}/describ
 
 K8S_CLUSTER_PERFORMANCE="${K8S_CLUSTER}/performance"
 
+K8S_CLUSTER_VALIDATINGWEBHOOK_DATA="${K8S_CLUSTER}/validatingwebhookdata"
+K8S_CLUSTER_VALIDATINGWEBHOOK_YAML_OUTPUT="${K8S_CLUSTER_VALIDATINGWEBHOOK_DATA}/yaml"
+
+K8S_CLUSTER_MUTATINGWEBHOOK_DATA="${K8S_CLUSTER}/mutatingwebhookdata"
+K8S_CLUSTER_MUTATINGWEBHOOK_YAML_OUTPUT="${K8S_CLUSTER_MUTATINGWEBHOOK_DATA}/yaml"
+
 
 mkdir -p $K8S_VERSION
 
@@ -462,6 +468,10 @@ mkdir -p $K8S_CLUSTER_PV_DESCRIBE_DATA
 mkdir -p $K8S_CLUSTER_STORAGECLASS_DESCRIBE_DATA
 
 mkdir -p $K8S_CLUSTER_PERFORMANCE
+
+mkdir -p $K8S_CLUSTER_VALIDATINGWEBHOOK_YAML_OUTPUT
+
+mkdir -p $K8S_CLUSTER_MUTATINGWEBHOOK_YAML_OUTPUT
 
 #------------------------------------------------------------------------------------------------------
 
@@ -745,12 +755,8 @@ for NAMESPACE in $NAMESPACE_LIST; do
     [[ $? -ne 0 || ${#OUTPUT} -eq 0 ]] ||  echo "$OUTPUT" > "${K8S_NAMESPACES_LIST_DATA}/hpa.out"
     OUTPUT=`kubectl get validatingwebhookconfiguration -n $NAMESPACE 2>/dev/null`
     [[ $? -ne 0 || ${#OUTPUT} -eq 0 ]] ||  echo "$OUTPUT" > "${K8S_NAMESPACES_LIST_DATA}/validatingwebhookconfiguration.out"
-    OUTPUT=`kubectl get validatingwebhookconfiguration -oyaml -n $NAMESPACE 2>/dev/null`
-    [[ $? -ne 0 || ${#OUTPUT} -eq 0 ]] ||  echo "$OUTPUT" > "${K8S_NAMESPACES_LIST_DATA}/validatingwebhookconfigurationyaml.out"
     OUTPUT=`kubectl get mutatingwebhookconfiguration -n $NAMESPACE 2>/dev/null`
     [[ $? -ne 0 || ${#OUTPUT} -eq 0 ]] ||  echo "$OUTPUT" > "${K8S_NAMESPACES_LIST_DATA}/mutatingwebhookconfiguration.out"
-    OUTPUT=`kubectl get mutatingwebhookconfiguration -oyaml -n $NAMESPACE 2>/dev/null`
-    [[ $? -ne 0 || ${#OUTPUT} -eq 0 ]] ||  echo "$OUTPUT" > "${K8S_NAMESPACES_LIST_DATA}/mutatingwebhookconfigurationyaml.out"
 
     #grab ingress/routes then check each
     OUTPUT=`kubectl get ingress -n $NAMESPACE 2>/dev/null`
@@ -819,6 +825,34 @@ for NAMESPACE in $NAMESPACE_LIST; do
         done <<< "$OUTPUT"
     else
         rm -fr $K8S_NAMESPACES_CONFIGMAP_DATA
+    fi
+
+    #grab validataingwebhookconfiguation data 
+    OUTPUT=`kubectl get validatingwebhookconfiguration -n $NAMESPACE 2>/dev/null`
+    if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
+        echo "$OUTPUT" > "${K8S_CLUSTER_VALIDATINGWEBHOOK_DATA}/validatingwebhookconfiguration.out"
+        while read line; do 
+            cm=`echo "$line" | cut -d' ' -f1`
+            kubectl get validatingwebhookconfiguration $cm -n $NAMESPACE -o yaml &> "${K8S_CLUSTER_VALIDATINGWEBHOOK_YAML_OUTPUT}/${cm}.yaml"
+            [ $? -eq 0 ] || rm -f "${K8S_CLUSTER_VALIDATINGWEBHOOK_YAML_OUTPUT}/${cm}.yaml"
+
+        done <<< "$OUTPUT" 
+    else 
+        rm -fr $K8S_CLUSTER_VALIDATINGWEBHOOK_DATA
+    fi
+
+    #grab mutatingwebhookconfiguration data 
+    OUTPUT=`kubectl get mutatingwebhookconfiguration -n $NAMESPACE 2>/dev/null`
+    if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
+        echo "$OUTPUT" > "${K8S_CLUSTER_MUTATINGWEBHOOK_DATA}/mutatingwebhookconfiguration.out"
+        while read line; do 
+            cm=`echo "$line" | cut -d' ' -f1`
+            kubectl get mutatingwebhookconfiguration $cm -n $NAMESPACE -o yaml &> "${K8S_CLUSTER_MUTATINGWEBHOOK_YAML_OUTPUT}/${cm}.yaml"
+            [ $? -eq 0 ] || rm -f "${K8S_CLUSTER_MUTATINGWEBHOOK_YAML_OUTPUT}/${cm}.yaml"
+
+        done <<< "$OUTPUT" 
+    else 
+        rm -fr $K8S_CLUSTER_MUTATINGWEBHOOK_DATA
     fi
 
     #grab cronjob data
