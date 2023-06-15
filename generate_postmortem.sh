@@ -449,6 +449,12 @@ K8S_CLUSTER_STORAGECLASS_DESCRIBE_DATA="${K8S_CLUSTER_STORAGECLASS_DATA}/describ
 
 K8S_CLUSTER_PERFORMANCE="${K8S_CLUSTER}/performance"
 
+K8S_CLUSTER_VALIDATINGWEBHOOK_CONFIGURATIONS="${K8S_CLUSTER}/validatingwebhookconfigurations"
+K8S_CLUSTER_VALIDATINGWEBHOOK_YAML_OUTPUT="${K8S_CLUSTER_VALIDATINGWEBHOOK_CONFIGURATIONS}/yaml"
+
+K8S_CLUSTER_MUTATINGWEBHOOK_CONFIGURATIONS="${K8S_CLUSTER}/mutatingwebhookconfigurations"
+K8S_CLUSTER_MUTATINGWEBHOOK_YAML_OUTPUT="${K8S_CLUSTER_MUTATINGWEBHOOK_CONFIGURATIONS}/yaml"
+
 
 mkdir -p $K8S_VERSION
 
@@ -462,6 +468,10 @@ mkdir -p $K8S_CLUSTER_PV_DESCRIBE_DATA
 mkdir -p $K8S_CLUSTER_STORAGECLASS_DESCRIBE_DATA
 
 mkdir -p $K8S_CLUSTER_PERFORMANCE
+
+mkdir -p $K8S_CLUSTER_VALIDATINGWEBHOOK_YAML_OUTPUT
+
+mkdir -p $K8S_CLUSTER_MUTATINGWEBHOOK_YAML_OUTPUT
 
 #------------------------------------------------------------------------------------------------------
 
@@ -597,6 +607,35 @@ if [[ $PERFORMANCE_CHECK -eq 1 ]]; then
         echo "${OUTPUT}" > ${K8S_CLUSTER_PERFORMANCE}/etcd-defrag.out
     fi
 fi
+
+#grab validataingwebhookconfiguation data 
+OUTPUT=`kubectl get validatingwebhookconfiguration 2>/dev/null`
+if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
+    echo "$OUTPUT" > "${K8S_CLUSTER_VALIDATINGWEBHOOK_CONFIGURATIONS}/validatingwebhookconfiguration.out"
+    while read line; do 
+        vwc=`echo "$line" | cut -d' ' -f1`
+        kubectl get validatingwebhookconfiguration $vwc -o yaml &> "${K8S_CLUSTER_VALIDATINGWEBHOOK_YAML_OUTPUT}/${vwc}.yaml"
+        [ $? -eq 0 ] || rm -f "${K8S_CLUSTER_VALIDATINGWEBHOOK_YAML_OUTPUT}/${vwc}.yaml"
+
+    done <<< "$OUTPUT" 
+else 
+    rm -fr $K8S_CLUSTER_VALIDATINGWEBHOOK_CONFIGURATIONS
+fi
+
+#grab mutatingwebhookconfiguration data 
+OUTPUT=`kubectl get mutatingwebhookconfiguration 2>/dev/null`
+if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
+    echo "$OUTPUT" > "${K8S_CLUSTER_MUTATINGWEBHOOK_CONFIGURATIONS}/mutatingwebhookconfiguration.out"
+    while read line; do 
+        mwc=`echo "$line" | cut -d' ' -f1`
+        kubectl get mutatingwebhookconfiguration $mwc -o yaml &> "${K8S_CLUSTER_MUTATINGWEBHOOK_YAML_OUTPUT}/${mwc}.yaml"
+        [ $? -eq 0 ] || rm -f "${K8S_CLUSTER_MUTATINGWEBHOOK_YAML_OUTPUT}/${mwc}.yaml"
+
+    done <<< "$OUTPUT" 
+else 
+    rm -fr $K8S_CLUSTER_MUTATINGWEBHOOK_CONFIGURATIONS
+fi
+
 
 #------------------------------------------------------------------------------------------------------
 
