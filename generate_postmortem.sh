@@ -712,6 +712,13 @@ for NAMESPACE in $NAMESPACE_LIST; do
     K8S_NAMESPACES_STS_DATA="${K8S_NAMESPACES_SPECIFIC}/statefulset"
     K8S_NAMESPACES_STS_DESCRIBE_DATA="${K8S_NAMESPACES_STS_DATA}/describe"
 
+    K8S_NAMESPACES_CERTS="${K8S_NAMESPACES_SPECIFIC}/certs"
+    K8S_NAMESPACES_CERTS_YAML_OUTPUT="${K8S_NAMESPACES_CERTS}/yaml"
+
+    K8S_NAMESPACES_ISSUERS="${K8S_NAMESPACES_SPECIFIC}/issuers"
+    K8S_NAMESPACES_ISSUERS_YAML_OUTPUT="${K8S_NAMESPACES_ISSUERS}/yaml"
+
+
     mkdir -p $K8S_NAMESPACES_LIST_DATA
 
     mkdir -p $K8S_NAMESPACES_CLUSTER_YAML_OUTPUT
@@ -762,6 +769,12 @@ for NAMESPACE in $NAMESPACE_LIST; do
 
     mkdir -p $K8S_NAMESPACES_STS_DESCRIBE_DATA
 
+    mkdir -p $K8S_NAMESPACES_CERTS_YAML_OUTPUT
+
+    mkdir -p $K8S_NAMESPACES_ISSUERS_YAML_OUTPUT
+
+
+
     #grab cluster configuration, equivalent to "apiconnect-up.yml" which now resides in cluster
     CLUSTER_LIST=(apic AnalyticsBackups AnalyticsClusters AnalyticsRestores APIConnectClusters DataPowerServices DataPowerMonitors EventEndpointManager EventGatewayClusters GatewayClusters ManagementBackups ManagementClusters ManagementDBUpgrades ManagementRestores NatsClusters NatsServiceRoles NatsStreamingClusters PGClusters PGPolicies PGReplicas PGTasks PortalBackups PortalClusters PortalRestores PortalSecretRotations)
     for cluster in ${CLUSTER_LIST[@]}; do
@@ -782,10 +795,6 @@ for NAMESPACE in $NAMESPACE_LIST; do
     [[ $? -ne 0 || ${#OUTPUT} -eq 0 ]] ||  echo "$OUTPUT" > "${K8S_NAMESPACES_LIST_DATA}/events.out"
     OUTPUT=`kubectl get hpa -n $NAMESPACE 2>/dev/null`
     [[ $? -ne 0 || ${#OUTPUT} -eq 0 ]] ||  echo "$OUTPUT" > "${K8S_NAMESPACES_LIST_DATA}/hpa.out"
-    OUTPUT=`kubectl get validatingwebhookconfiguration -n $NAMESPACE 2>/dev/null`
-    [[ $? -ne 0 || ${#OUTPUT} -eq 0 ]] ||  echo "$OUTPUT" > "${K8S_NAMESPACES_LIST_DATA}/validatingwebhookconfiguration.out"
-    OUTPUT=`kubectl get mutatingwebhookconfiguration -n $NAMESPACE 2>/dev/null`
-    [[ $? -ne 0 || ${#OUTPUT} -eq 0 ]] ||  echo "$OUTPUT" > "${K8S_NAMESPACES_LIST_DATA}/mutatingwebhookconfiguration.out"
 
     #grab ingress/routes then check each
     OUTPUT=`kubectl get ingress -n $NAMESPACE 2>/dev/null`
@@ -854,6 +863,34 @@ for NAMESPACE in $NAMESPACE_LIST; do
         done <<< "$OUTPUT"
     else
         rm -fr $K8S_NAMESPACES_CONFIGMAP_DATA
+    fi
+
+    #grab certs 
+    OUTPUT=`kubectl get certs -n $NAMESPACE -o wide 2>/dev/null`
+    if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
+        echo "$OUTPUT" > "${K8S_NAMESPACES_CERTS}/certs.out"
+        while read line; do
+            crt=`echo "$line" | cut -d' ' -f1`
+            kubectl get certs $crt -n $NAMESPACE -o yaml &>"${K8S_NAMESPACES_CERTS_YAML_OUTPUT}/${crt}.yaml"
+            [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_CERTS_YAML_OUTPUT}/${crt}.yaml"
+
+        done <<< "$OUTPUT"
+    else
+        rm -fr $K8S_NAMESPACES_CERTS
+    fi
+
+    #grab issuers 
+    OUTPUT=`kubectl get issuers -n $NAMESPACE -o wide 2>/dev/null`
+    if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
+        echo "$OUTPUT" > "${K8S_NAMESPACES_ISSUERS}/issuers.out"
+        while read line; do
+            is=`echo "$line" | cut -d' ' -f1`
+            kubectl get issuers $is -n $NAMESPACE -o yaml &>"${K8S_NAMESPACES_ISSUERS_YAML_OUTPUT}/${is}.yaml"
+            [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_ISSUERS_YAML_OUTPUT}/${is}.yaml"
+
+        done <<< "$OUTPUT"
+    else
+        rm -fr $K8S_NAMESPACES_ISSUERS
     fi
 
     #grab cronjob data
