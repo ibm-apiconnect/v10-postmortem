@@ -301,8 +301,7 @@ fi
 
 #============================================== autodetect namespaces ============================================
 if [[ $AUTO_DETECT -eq 1 ]]; then
-    NS_LISTING=`kubectl get ns 2>/dev/null | sed -e '1d' | egrep -v "kube-system|cert-manager|rook"`
-    NS_LISTING=`kubectl get ns 2>/dev/null | sed -e '1d' | egrep -v "kube-system|certmanager|rook"`
+    NS_LISTING=`kubectl get ns 2>/dev/null | sed -e '1d' | egrep -v "kube-system|cert-manager|rook|certmanager"`
 
     SUBSYS_MANAGER="ISNOTSET"
     SUBSYS_ANALYTICS="ISNOTSET"
