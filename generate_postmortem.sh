@@ -26,7 +26,7 @@ for switch in $@; do
             echo -e "--ova:                   Only set if running inside an OVA deployment."
             echo -e "--pull-appliance-logs:   Call [apic logs] command then package into archive file."
             echo -e ""
-            echo -e "--collect-secrets:       Collect secrets from targeted namespaces.  Due to sensitivity of data, do not use unless requested by support."
+            echo -e "--collect-private-keys:  Include "tls.key" members in TLS secrets from targeted namespaces.  Due to sensitivity of data, do not use unless requested by support."
             echo -e "--collect-crunchy:       Collect Crunchy mustgather."
             echo -e "--collect-edb:           Collect EDB mustgather."
             echo -e ""
@@ -34,7 +34,7 @@ for switch in $@; do
             echo -e "--diagnostic-manager:    Set to include additional manager specific data."
             echo -e "--diagnostic-gateway:    Set to include additional gateway specific data."
             echo -e "--diagnostic-portal:     Set to include additional portal specific data."
-            echo -e "--diagnostic-analytics:  Set to include additional portal specific data."
+            echo -e "--diagnostic-analytics:  Set to include additional analytics specific data."
             echo -e ""
             echo -e "--debug:                 Set to enable verbose logging."
             echo -e ""
@@ -113,8 +113,8 @@ for switch in $@; do
         *"--no-prompt"*)
             NO_PROMPT=1
             ;;
-        *"--collect-secrets"*)
-            COLLECT_SECRETS=1
+        *"--collect-private-keys"*)
+            COLLECT_PRIVATE_KEYS=1
             ;;
         *"--collect-crunchy"*)
             COLLECT_CRUNCHY=1
@@ -608,31 +608,31 @@ if [[ $PERFORMANCE_CHECK -eq 1 ]]; then
     fi
 fi
 
-#grab validataingwebhookconfiguation data 
+#grab validataingwebhookconfiguation data
 OUTPUT=`kubectl get validatingwebhookconfiguration 2>/dev/null`
 if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
     echo "$OUTPUT" > "${K8S_CLUSTER_VALIDATINGWEBHOOK_CONFIGURATIONS}/validatingwebhookconfiguration.out"
-    while read line; do 
+    while read line; do
         vwc=`echo "$line" | cut -d' ' -f1`
         kubectl get validatingwebhookconfiguration $vwc -o yaml &> "${K8S_CLUSTER_VALIDATINGWEBHOOK_YAML_OUTPUT}/${vwc}.yaml"
         [ $? -eq 0 ] || rm -f "${K8S_CLUSTER_VALIDATINGWEBHOOK_YAML_OUTPUT}/${vwc}.yaml"
 
-    done <<< "$OUTPUT" 
-else 
+    done <<< "$OUTPUT"
+else
     rm -fr $K8S_CLUSTER_VALIDATINGWEBHOOK_CONFIGURATIONS
 fi
 
-#grab mutatingwebhookconfiguration data 
+#grab mutatingwebhookconfiguration data
 OUTPUT=`kubectl get mutatingwebhookconfiguration 2>/dev/null`
 if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
     echo "$OUTPUT" > "${K8S_CLUSTER_MUTATINGWEBHOOK_CONFIGURATIONS}/mutatingwebhookconfiguration.out"
-    while read line; do 
+    while read line; do
         mwc=`echo "$line" | cut -d' ' -f1`
         kubectl get mutatingwebhookconfiguration $mwc -o yaml &> "${K8S_CLUSTER_MUTATINGWEBHOOK_YAML_OUTPUT}/${mwc}.yaml"
         [ $? -eq 0 ] || rm -f "${K8S_CLUSTER_MUTATINGWEBHOOK_YAML_OUTPUT}/${mwc}.yaml"
 
-    done <<< "$OUTPUT" 
-else 
+    done <<< "$OUTPUT"
+else
     rm -fr $K8S_CLUSTER_MUTATINGWEBHOOK_CONFIGURATIONS
 fi
 
@@ -817,7 +817,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
 
         #check if portal pods are available to use nslookup
         OUTPUT1=`kubectl get pods -n $NAMESPACE 2>/dev/null | egrep -v "up|downloads" | egrep "portal.*www|-apim-|-client-|-ui-" | head -n1`
-        if [[ ${#OUTPUT} -gt 0 ]]; then
+        if [[ ${#OUTPUT1} -gt 0 ]]; then
             nslookup_pod=`echo "${OUTPUT1}" | awk '{print $1}'`
         fi
 
@@ -865,7 +865,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
         rm -fr $K8S_NAMESPACES_CONFIGMAP_DATA
     fi
 
-    #grab certs 
+    #grab certs
     OUTPUT=`kubectl get certs -n $NAMESPACE -o wide 2>/dev/null`
     if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
         echo "$OUTPUT" > "${K8S_NAMESPACES_CERTS}/certs.out"
@@ -879,7 +879,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
         rm -fr $K8S_NAMESPACES_CERTS
     fi
 
-    #grab issuers 
+    #grab issuers
     OUTPUT=`kubectl get issuers -n $NAMESPACE -o wide 2>/dev/null`
     if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
         echo "$OUTPUT" > "${K8S_NAMESPACES_ISSUERS}/issuers.out"
@@ -1450,40 +1450,32 @@ for NAMESPACE in $NAMESPACE_LIST; do
         rm -fr $K8S_NAMESPACES_SA_DATA
     fi
 
-    #grab secrets
+    #list all secrets
     OUTPUT=`kubectl get secrets -n $NAMESPACE 2>/dev/null`
-    if [[ $? -eq 0 && ${#OUTPUT1} -gt 0 ]]; then
+    if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
         echo "$OUTPUT" > "${K8S_NAMESPACES_SECRET_DATA}/secrets.out"
-        while read line; do
-            secret=`echo "$line" | cut -d' ' -f1`
 
-            # We can always describe the secret as there is no security exposure here
-            kubectl describe secret $secret -n $NAMESPACE &>"${K8S_NAMESPACES_SECRET_DESCRIBE_DATA}/${secret}.out"
-            [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_SECRET_DESCRIBE_DATA}/${secret}.out"
-
-            if [[ $COLLECT_SECRETS -eq 1 ]]; then
-                kubectl get secret $secret -o yaml -n $NAMESPACE &>"${K8S_NAMESPACES_SECRET_YAML_OUTPUT}/${secret}.yaml"
-                [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_SECRET_YAML_OUTPUT}/${secret}.yaml"
-            fi
-        done <<< "$OUTPUT"
-    else
-        rm -fr $K8S_NAMESPACES_SECRET_DATA
-    fi
-
-    if [[ $COLLECT_SECRETS -ne 1 ]]; then
-        #grab tls secrets and only the ca.crt and tls.crt fields
+        #grab tls secrets and only the ca.crt and tls.crt fields, unless COLLECT_PRIVATE_KEYS is set
         OUTPUT=`kubectl get secrets -n $NAMESPACE --field-selector type=kubernetes.io/tls 2>/dev/null`
-        if [[ $? -eq 0 && ${#OUTPUT1} -gt 0 ]]; then
+        if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
             while read line; do
                 secret=`echo "$line" | cut -d' ' -f1`
 
-                # No need for describe as that was done in the previous block
+                # We can always describe the secret as there is no security exposure here
+                kubectl describe secret $secret -n $NAMESPACE &>"${K8S_NAMESPACES_SECRET_DESCRIBE_DATA}/${secret}.out"
 
-                # Get only type, name, namespace, data["tls.crt"] and data["ca.crt"] fields
-                kubectl get secret $secret -n $NAMESPACE -o jsonpath='type: {.type}{"\n"}metadata:{"\n"}  name: {.metadata.name}{"\n"}  namespace: {.metadata.namespace}{"\n"}data:{"\n"}  ca.crt: {.data.ca\.crt}{"\n"}  tls.crt: {.data.tls\.crt}{"\n"}' &>"${K8S_NAMESPACES_SECRET_YAML_OUTPUT}/${secret}.yaml"
+                if [[ "$COLLECT_PRIVATE_KEYS" -eq 1 ]]; then
+                    # Get entire secret
+                    kubectl get secret $secret -n $NAMESPACE -o yaml &>"${K8S_NAMESPACES_SECRET_YAML_OUTPUT}/${secret}.yaml"
+                else
+                    # Get only type, name, namespace, data["tls.crt"] and data["ca.crt"] fields
+                    kubectl get secret $secret -n $NAMESPACE -o jsonpath='type: {.type}{"\n"}metadata:{"\n"}  name: {.metadata.name}{"\n"}  namespace: {.metadata.namespace}{"\n"}data:{"\n"}  ca.crt: {.data.ca\.crt}{"\n"}  tls.crt: {.data.tls\.crt}{"\n"}' &>"${K8S_NAMESPACES_SECRET_YAML_OUTPUT}/${secret}.yaml"
+                fi
                 [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_SECRET_YAML_OUTPUT}/${secret}.yaml"
             done <<< "$OUTPUT"
         fi
+    else
+        rm -fr $K8S_NAMESPACES_SECRET_DATA
     fi
 
     #grab service data
