@@ -1195,9 +1195,36 @@ for NAMESPACE in $NAMESPACE_LIST; do
                 PG_DATA_DU_OUTPUT=`kubectl exec -n $NAMESPACE ${pod} -c database -- du -sh /pgdata/${POSTGRES_PGLOGS_NAME}/  2>"/dev/null"`
                 echo "$PG_DATA_DU_OUTPUT" > $health_dir/pgdata-du.out
 
+                # pgdata du base
+                PG_DATA_DU_BASE_OUTPUT=`kubectl exec -n $NAMESPACE ${pod} -c database -- du -sh /pgdata/${POSTGRES_PGLOGS_NAME}/base/  2>"/dev/null"`
+                echo "$PG_DATA_DU_BASE_OUTPUT" > $health_dir/pgdata-du-base.out
+
                 # pgwal du
                 PG_WAL_DU_OUTPUT=`kubectl exec -n $NAMESPACE ${pod} -c database -- du -sh /pgwal/${POSTGRES_PGWAL_NAME}/  2>"/dev/null"`
                 echo "$PG_WAL_DU_OUTPUT" > $health_dir/pgwal-du.out
+
+                # patroniclt list
+                PATRONICTL_LIST_OUTPUT=`kubectl exec -n $NAMESPACE ${pod} -c database -- patronictl list 2>"/dev/null"`
+                echo "$PATRONICTL_LIST_OUTPUT" > $health_dir/patronictl-list.out
+
+                # patroniclt history
+                PATRONICTL_HISTORY_OUTPUT=`kubectl exec -n $NAMESPACE ${pod} -c database -- patronictl history 2>"/dev/null"`
+                echo "$PATRONICTL_HISTORY_OUTPUT" > $health_dir/patronictl-history.out
+
+                #SQL Commands 
+                COMMAND1="select * from pg_stat_subscription"
+                COMMAND2="select relname,last_vacuum, last_autovacuum, last_analyze, last_autoanalyze from pg_stat_user_tables"
+                COMMAND3="SELECT relname, n_dead_tup FROM pg_stat_sys_tables, last_autovacuum, autovacuum_count WHERE relname = 'pg_class'"
+                COMMAND4="SELECT schemaname, relname, n_live_tup, n_dead_tup, last_autovacuum FROM pg_stat_all_tables ORDER BY n_dead_tup / (n_live_tup * current_setting('autovacuum_vacuum_scale_factor')::float8 + current_setting('autovacuum_vacuum_threshold')::float8) DESC LIMIT 10;"
+                COMMAND5="select * from pg_replication_slots"
+                COMMAND6="select * from pg_stat_replication"
+                COMMAND7="select * from pg_publication"
+                
+                COMMANDS=("COMMAND1" "COMMAND2" "COMMAND3" "COMMAND4" "COMMAND5" "COMMAND6" "COMMAND7")
+                for COMMAND in "${COMMANDS[@]}"; do 
+                    SQL_OUTPUT=`kubectl exec -i ${pod} -- psql -c "${!COMMAND}" 2>"/dev/null"` 
+                    echo "$SQL_OUTPUT" >> $health_dir/sql-commands.out
+                done
             fi
 
             #grab gateway diagnostic data
