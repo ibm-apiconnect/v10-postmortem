@@ -1222,8 +1222,10 @@ for NAMESPACE in $NAMESPACE_LIST; do
                 
                 COMMANDS=("COMMAND1" "COMMAND2" "COMMAND3" "COMMAND4" "COMMAND5" "COMMAND6" "COMMAND7")
                 for COMMAND in "${COMMANDS[@]}"; do 
-                    SQL_OUTPUT=`kubectl exec -i ${pod} -- psql -c "${!COMMAND}" 2>"/dev/null"` 
-                    echo "$SQL_OUTPUT" >> $health_dir/sql-commands.out
+                    COMMAND_RUNNING="${!COMMAND}"
+                    echo "$COMMAND_RUNNING" >> $health_dir/sql-commands.out
+                    SQL_OUTPUT=`kubectl exec -i ${pod} -- psql -c "$COMMAND_RUNNING" 2>"/dev/null"` 
+                    echo -e "$SQL_OUTPUT\n" >> $health_dir/sql-commands.out
                 done
             fi
 
