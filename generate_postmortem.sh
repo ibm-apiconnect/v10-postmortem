@@ -1195,9 +1195,59 @@ for NAMESPACE in $NAMESPACE_LIST; do
                 PG_DATA_DU_OUTPUT=`kubectl exec -n $NAMESPACE ${pod} -c database -- du -sh /pgdata/${POSTGRES_PGLOGS_NAME}/  2>"/dev/null"`
                 echo "$PG_DATA_DU_OUTPUT" > $health_dir/pgdata-du.out
 
+                # pgdata du base
+                PG_DATA_DU_BASE_OUTPUT=`kubectl exec -n $NAMESPACE ${pod} -c database -- du -sh /pgdata/${POSTGRES_PGLOGS_NAME}/base/  2>"/dev/null"`
+                echo "$PG_DATA_DU_BASE_OUTPUT" > $health_dir/pgdata-du-base.out
+
                 # pgwal du
                 PG_WAL_DU_OUTPUT=`kubectl exec -n $NAMESPACE ${pod} -c database -- du -sh /pgwal/${POSTGRES_PGWAL_NAME}/  2>"/dev/null"`
                 echo "$PG_WAL_DU_OUTPUT" > $health_dir/pgwal-du.out
+
+                # patroniclt list
+                PATRONICTL_LIST_OUTPUT=`kubectl exec -n $NAMESPACE ${pod} -c database -- patronictl list 2>"/dev/null"`
+                echo "$PATRONICTL_LIST_OUTPUT" > $health_dir/patronictl-list.out
+
+                # patroniclt history
+                PATRONICTL_HISTORY_OUTPUT=`kubectl exec -n $NAMESPACE ${pod} -c database -- patronictl history 2>"/dev/null"`
+                echo "$PATRONICTL_HISTORY_OUTPUT" > $health_dir/patronictl-history.out
+
+                #SQL Commands 
+                QUERY1="select * from pg_stat_subscription"
+                QUERY2="select relname,last_vacuum, last_autovacuum, last_analyze, last_autoanalyze from pg_stat_user_tables"
+                QUERY3="select relname, n_dead_tup, last_autovacuum, autovacuum_count FROM pg_stat_sys_tables where relname = 'pg_class';"
+                QUERY4="SELECT schemaname, relname, n_live_tup, n_dead_tup, last_autovacuum FROM pg_stat_all_tables ORDER BY n_dead_tup / (n_live_tup * current_setting('autovacuum_vacuum_scale_factor')::float8 + current_setting('autovacuum_vacuum_threshold')::float8) DESC LIMIT 10;"
+                QUERY5="select * from pg_replication_slots"
+                QUERY6="select * from pg_stat_replication"
+                QUERY7="select * from pg_publication"
+                QUERY8="select * from pg_stat_wal_receiver;"
+                
+                #Default postgres database
+                POSTGRES_QUERIES=("QUERY1" "QUERY5" "QUERY6" "QUERY8" "QUERY2" "QUERY3" "QUERY4")
+                for QUERY in "${POSTGRES_QUERIES[@]}"; do 
+                    QUERY_RUNNING="${!QUERY}"
+                    echo "$QUERY_RUNNING" >> $health_dir/postgres-sql-queries.out
+                    SQL_OUTPUT=`kubectl exec -i ${pod} -- psql -c "$QUERY_RUNNING" 2>"/dev/null"` 
+                    echo -e "$SQL_OUTPUT\n" >> $health_dir/postgres-sql-queries.out
+                done
+
+                #APIM Database
+                APIM_QUERIES=("QUERY7" "QUERY2" "QUERY3" "QUERY4")
+                for QUERY in "${APIM_QUERIES[@]}"; do 
+                    QUERY_RUNNING="${!QUERY}"
+                    echo "$QUERY_RUNNING" >> $health_dir/apim-sql-queries.out
+                    SQL_OUTPUT=`kubectl exec -i ${pod} -- psql -d apim -c "$QUERY_RUNNING" 2>"/dev/null"` 
+                    echo -e "$SQL_OUTPUT\n" >> $health_dir/apim-sql-queries.out
+                done
+
+                #LUR Database
+                LUR_QUERIES=("QUERY7" "QUERY2" "QUERY3" "QUERY4")
+                for QUERY in "${LUR_QUERIES[@]}"; do 
+                    QUERY_RUNNING="${!QUERY}"
+                    echo "$QUERY_RUNNING" >> $health_dir/lur-sql-queries.out
+                    SQL_OUTPUT=`kubectl exec -i ${pod} -- psql -d lur -c "$QUERY_RUNNING" 2>"/dev/null"` 
+                    echo -e "$SQL_OUTPUT\n" >> $health_dir/lur-sql-queries.out
+                done
+
             fi
 
             #grab gateway diagnostic data
