@@ -1212,42 +1212,41 @@ for NAMESPACE in $NAMESPACE_LIST; do
                 echo "$PATRONICTL_HISTORY_OUTPUT" > $health_dir/patronictl-history.out
 
                 #SQL Commands 
-                COMMAND1="select * from pg_stat_subscription"
-                COMMAND2="select relname,last_vacuum, last_autovacuum, last_analyze, last_autoanalyze from pg_stat_user_tables"
-                COMMAND3="select relname, n_dead_tup, last_autovacuum, autovacuum_count FROM pg_stat_sys_tables where relname = 'pg_class';"
-                COMMAND4="SELECT schemaname, relname, n_live_tup, n_dead_tup, last_autovacuum FROM pg_stat_all_tables ORDER BY n_dead_tup / (n_live_tup * current_setting('autovacuum_vacuum_scale_factor')::float8 + current_setting('autovacuum_vacuum_threshold')::float8) DESC LIMIT 10;"
-                COMMAND5="select * from pg_replication_slots"
-                COMMAND6="select * from pg_stat_replication"
-                COMMAND7="select * from pg_publication"
-                COMMAND8="select * from pg_stat_wal_receiver;"
+                QUERY1="select * from pg_stat_subscription"
+                QUERY2="select relname,last_vacuum, last_autovacuum, last_analyze, last_autoanalyze from pg_stat_user_tables"
+                QUERY3="select relname, n_dead_tup, last_autovacuum, autovacuum_count FROM pg_stat_sys_tables where relname = 'pg_class';"
+                QUERY4="SELECT schemaname, relname, n_live_tup, n_dead_tup, last_autovacuum FROM pg_stat_all_tables ORDER BY n_dead_tup / (n_live_tup * current_setting('autovacuum_vacuum_scale_factor')::float8 + current_setting('autovacuum_vacuum_threshold')::float8) DESC LIMIT 10;"
+                QUERY5="select * from pg_replication_slots"
+                QUERY6="select * from pg_stat_replication"
+                QUERY7="select * from pg_publication"
+                QUERY8="select * from pg_stat_wal_receiver;"
                 
                 #Default postgres database
-                POSTGRES_COMMANDS=("COMMAND1" "COMMAND5" "COMMAND6" "COMMAND8" "COMMAND2" "COMMAND3" "COMMAND4")
-                for COMMAND in "${POSTGRES_COMMANDS[@]}"; do 
-                    COMMAND_RUNNING="${!COMMAND}"
-                    echo "$COMMAND_RUNNING" >> $health_dir/postgres-sql-commands.out
-                    SQL_OUTPUT=`kubectl exec -i ${pod} -- psql -c "$COMMAND_RUNNING" 2>"/dev/null"` 
-                    echo -e "$SQL_OUTPUT\n" >> $health_dir/postgres-sql-commands.out
+                POSTGRES_QUERIES=("QUERY1" "QUERY5" "QUERY6" "QUERY8" "QUERY2" "QUERY3" "QUERY4")
+                for QUERY in "${POSTGRES_QUERIES[@]}"; do 
+                    QUERY_RUNNING="${!QUERY}"
+                    echo "$QUERY_RUNNING" >> $health_dir/postgres-sql-queries.out
+                    SQL_OUTPUT=`kubectl exec -i ${pod} -- psql -c "$QUERY_RUNNING" 2>"/dev/null"` 
+                    echo -e "$SQL_OUTPUT\n" >> $health_dir/postgres-sql-queries.out
                 done
 
                 #APIM Database
-                APIM_COMMANDS=("COMMAND7" "COMMAND2" "COMMAND3" "COMMAND4")
-                for COMMAND in "${APIM_COMMANDS[@]}"; do 
-                    COMMAND_RUNNING="${!COMMAND}"
-                    echo "$COMMAND_RUNNING" >> $health_dir/apim-sql-commands.out
-                    SQL_OUTPUT=`kubectl exec -i ${pod} -- psql -d apim -c "$COMMAND_RUNNING" 2>"/dev/null"` 
-                    echo -e "$SQL_OUTPUT\n" >> $health_dir/apim-sql-commands.out
+                APIM_QUERIES=("QUERY7" "QUERY2" "QUERY3" "QUERY4")
+                for QUERY in "${APIM_QUERIES[@]}"; do 
+                    QUERY_RUNNING="${!QUERY}"
+                    echo "$QUERY_RUNNING" >> $health_dir/apim-sql-queries.out
+                    SQL_OUTPUT=`kubectl exec -i ${pod} -- psql -d apim -c "$QUERY_RUNNING" 2>"/dev/null"` 
+                    echo -e "$SQL_OUTPUT\n" >> $health_dir/apim-sql-queries.out
                 done
 
                 #LUR Database
-                LUR_COMMANDS=("COMMAND7" "COMMAND2" "COMMAND3" "COMMAND4")
-                for COMMAND in "${LUR_COMMANDS[@]}"; do 
-                    COMMAND_RUNNING="${!COMMAND}"
-                    echo "$COMMAND_RUNNING" >> $health_dir/lur-sql-commands.out
-                    SQL_OUTPUT=`kubectl exec -i ${pod} -- psql -d lur -c "$COMMAND_RUNNING" 2>"/dev/null"` 
-                    echo -e "$SQL_OUTPUT\n" >> $health_dir/lur-sql-commands.out
+                LUR_QUERIES=("QUERY7" "QUERY2" "QUERY3" "QUERY4")
+                for QUERY in "${LUR_QUERIES[@]}"; do 
+                    QUERY_RUNNING="${!QUERY}"
+                    echo "$QUERY_RUNNING" >> $health_dir/lur-sql-queries.out
+                    SQL_OUTPUT=`kubectl exec -i ${pod} -- psql -d lur -c "$QUERY_RUNNING" 2>"/dev/null"` 
+                    echo -e "$SQL_OUTPUT\n" >> $health_dir/lur-sql-queries.out
                 done
-
 
             fi
 
