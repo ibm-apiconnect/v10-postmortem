@@ -1219,11 +1219,10 @@ for NAMESPACE in $NAMESPACE_LIST; do
                 COMMAND5="select * from pg_replication_slots"
                 COMMAND6="select * from pg_stat_replication"
                 COMMAND7="select * from pg_publication"
-                COMMAND8="select * from pg_stat_replication_slots;"
-                COMMAND9="select * from pg_stat_wal_receiver;"
+                COMMAND8="select * from pg_stat_wal_receiver;"
                 
                 #Default postgres database
-                POSTGRES_COMMANDS=("COMMAND1" "COMMAND5" "COMMAND6" "COMMAND8" "COMMAND9" "COMMAND2" "COMMAND3" "COMMAND4")
+                POSTGRES_COMMANDS=("COMMAND1" "COMMAND5" "COMMAND6" "COMMAND8" "COMMAND2" "COMMAND3" "COMMAND4")
                 for COMMAND in "${POSTGRES_COMMANDS[@]}"; do 
                     COMMAND_RUNNING="${!COMMAND}"
                     echo "$COMMAND_RUNNING" >> $health_dir/postgres-sql-commands.out
