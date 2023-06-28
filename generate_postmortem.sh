@@ -1214,19 +1214,42 @@ for NAMESPACE in $NAMESPACE_LIST; do
                 #SQL Commands 
                 COMMAND1="select * from pg_stat_subscription"
                 COMMAND2="select relname,last_vacuum, last_autovacuum, last_analyze, last_autoanalyze from pg_stat_user_tables"
-                COMMAND3="SELECT relname, n_dead_tup FROM pg_stat_sys_tables, last_autovacuum, autovacuum_count WHERE relname = 'pg_class'"
+                COMMAND3="select relname, n_dead_tup, last_autovacuum, autovacuum_count FROM pg_stat_sys_tables where relname = 'pg_class';"
                 COMMAND4="SELECT schemaname, relname, n_live_tup, n_dead_tup, last_autovacuum FROM pg_stat_all_tables ORDER BY n_dead_tup / (n_live_tup * current_setting('autovacuum_vacuum_scale_factor')::float8 + current_setting('autovacuum_vacuum_threshold')::float8) DESC LIMIT 10;"
                 COMMAND5="select * from pg_replication_slots"
                 COMMAND6="select * from pg_stat_replication"
                 COMMAND7="select * from pg_publication"
+                COMMAND8="select * from pg_stat_replication_slots;"
+                COMMAND9="select * from pg_stat_wal_receiver;"
                 
-                COMMANDS=("COMMAND1" "COMMAND2" "COMMAND3" "COMMAND4" "COMMAND5" "COMMAND6" "COMMAND7")
-                for COMMAND in "${COMMANDS[@]}"; do 
+                #Default postgres database
+                POSTGRES_COMMANDS=("COMMAND1" "COMMAND5" "COMMAND6" "COMMAND8" "COMMAND9" "COMMAND2" "COMMAND3" "COMMAND4")
+                for COMMAND in "${POSTGRES_COMMANDS[@]}"; do 
                     COMMAND_RUNNING="${!COMMAND}"
-                    echo "$COMMAND_RUNNING" >> $health_dir/sql-commands.out
+                    echo "$COMMAND_RUNNING" >> $health_dir/postgres-sql-commands.out
                     SQL_OUTPUT=`kubectl exec -i ${pod} -- psql -c "$COMMAND_RUNNING" 2>"/dev/null"` 
-                    echo -e "$SQL_OUTPUT\n" >> $health_dir/sql-commands.out
+                    echo -e "$SQL_OUTPUT\n" >> $health_dir/postgres-sql-commands.out
                 done
+
+                #APIM Database
+                APIM_COMMANDS=("COMMAND7" "COMMAND2" "COMMAND3" "COMMAND4")
+                for COMMAND in "${APIM_COMMANDS[@]}"; do 
+                    COMMAND_RUNNING="${!COMMAND}"
+                    echo "$COMMAND_RUNNING" >> $health_dir/apim-sql-commands.out
+                    SQL_OUTPUT=`kubectl exec -i ${pod} -- psql -d apim -c "$COMMAND_RUNNING" 2>"/dev/null"` 
+                    echo -e "$SQL_OUTPUT\n" >> $health_dir/apim-sql-commands.out
+                done
+
+                #LUR Database
+                LUR_COMMANDS=("COMMAND7" "COMMAND2" "COMMAND3" "COMMAND4")
+                for COMMAND in "${LUR_COMMANDS[@]}"; do 
+                    COMMAND_RUNNING="${!COMMAND}"
+                    echo "$COMMAND_RUNNING" >> $health_dir/lur-sql-commands.out
+                    SQL_OUTPUT=`kubectl exec -i ${pod} -- psql -d lur -c "$COMMAND_RUNNING" 2>"/dev/null"` 
+                    echo -e "$SQL_OUTPUT\n" >> $health_dir/lur-sql-commands.out
+                done
+
+
             fi
 
             #grab gateway diagnostic data
