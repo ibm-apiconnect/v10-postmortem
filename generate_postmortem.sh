@@ -1137,7 +1137,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
                     esac
 
                     # Following is to fix the case where analytics instance name is truncated.
-                    INSTANCE_LABEL=`kubectl get po -o jsonpath='{.metadata.labels.app\.kubernetes\.io\/instance}' $pod`
+                    INSTANCE_LABEL=`kubectl get pod -n $NAMESPACE -o jsonpath='{.metadata.labels.app\.kubernetes\.io\/instance}' $pod 2>/dev/null`
                     if [[ $INSTANCE_LABEL == $SUBSYS_ANALYTICS ]]; then
                         SUBFOLDER="analytics"
                         subAnalytics=$SUBSYS_ANALYTICS
