@@ -332,7 +332,7 @@ def collect_pg_pod_details():
                                             container), "ab+") as file_pointer:
                 for command in (CONTAINER_COMMANDS['all'] +
                                 CONTAINER_COMMANDS[container]):
-                    cmd = (OPT.kube_cli + " exec -it {} -c {} {} -- "
+                    cmd = (OPT.kube_cli + " exec -it --pod-running-timeout=1m0s {} -c {} {} -- "
                            "/bin/bash -c '{}'"
                            .format(get_namespace_argument(),
                                    container, pod, command))
@@ -375,7 +375,7 @@ def collect_pg_logs():
         os.makedirs(tgt_file)
         # print("OPT.pg_logs_count:  ", OPT.pg_logs_count)
         cmd = (OPT.kube_cli +
-               " exec -it {} -c database {} -- /bin/bash -c"
+               " exec -it --pod-running-timeout=1m0s {} -c database {} -- /bin/bash -c"
                " 'ls -1dt /pgdata/*/pglogs/* | head -{}'"
                .format(get_namespace_argument(), pod, OPT.pg_logs_count))
         # print(cmd)
