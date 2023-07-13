@@ -337,8 +337,6 @@ def collect_pg_pod_details():
                            .format(get_namespace_argument(),
                                    container, pod, command))
                     handle = subprocess.Popen(cmd, shell=True,
-                                              stdout=subprocess.PIPE,
-                                              stderr=subprocess.STDOUT)
                                               stdout=file_pointer.fileno(),
                                               stderr=file_pointer.fileno())
                     try: 
