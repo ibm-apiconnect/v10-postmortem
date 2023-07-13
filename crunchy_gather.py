@@ -339,12 +339,12 @@ def collect_pg_pod_details():
                     handle = subprocess.Popen(cmd, shell=True,
                                               stdout=subprocess.PIPE,
                                               stderr=subprocess.STDOUT)
-                    while True:
-                        line = handle.stdout.readline()
-                        if line:
-                            file_pointer.write(line)
-                        else:
-                            break
+                                              stdout=file_pointer.fileno(),
+                                              stderr=file_pointer.fileno())
+                    try: 
+                        out=handle.communicate(timeout=60)
+                    except subprocess.TimeoutExpired: 
+                        handle.kill()
             logger.info("  + pod:%s, container:%s", pod, container)
 
 
