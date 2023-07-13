@@ -342,6 +342,7 @@ def collect_pg_pod_details():
                     try: 
                         out=handle.communicate(timeout=60)
                     except subprocess.TimeoutExpired: 
+                        logger.warning("The output for " + cmd + " was not captured due to timeout")
                         handle.kill()
             logger.info("  + pod:%s, container:%s", pod, container)
 
