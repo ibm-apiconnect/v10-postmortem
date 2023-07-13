@@ -337,14 +337,13 @@ def collect_pg_pod_details():
                            .format(get_namespace_argument(),
                                    container, pod, command))
                     handle = subprocess.Popen(cmd, shell=True,
-                                              stdout=subprocess.PIPE,
-                                              stderr=subprocess.STDOUT)
-                    while True:
-                        line = handle.stdout.readline()
-                        if line:
-                            file_pointer.write(line)
-                        else:
-                            break
+                                              stdout=file_pointer.fileno(),
+                                              stderr=file_pointer.fileno())
+                    try: 
+                        out=handle.communicate(timeout=60)
+                    except subprocess.TimeoutExpired: 
+                        logger.warning("The output for " + cmd + " was not captured due to timeout")
+                        handle.kill()
             logger.info("  + pod:%s, container:%s", pod, container)
 
 
