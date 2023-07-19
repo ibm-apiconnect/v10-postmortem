@@ -9,9 +9,9 @@
 #
 
 #parse passed arguments
-PMVERSION='97072fdc96519586066ca541f2dcb9044c4eb804'
-BUILDINGLINK="https://github.com/ibm-apiconnect/v10-postmortem/commit/$PMVERSION"
-echo "Postmortem Version: $BUILDINGLINK"
+PMCOMMIT='97072fdc96519586066ca541f2dcb9044c4eb804'
+PMCOMMITURL="https://github.com/ibm-apiconnect/v10-postmortem/commit/$PMCOMMIT"
+echo "Postmortem Version: $PMCOMMITURL"
 
 for switch in $@; do
     case $switch in
@@ -140,8 +140,8 @@ for switch in $@; do
             chmod +x $SCRIPT_LOCATION
             ;;
         *"--version"*)
-            echo "Postmortem Version: $BUILDINGLINK"
-            exit 1
+            echo "Postmortem Version: $PMCOMMITURL"
+            exit 0
             ;;
         *)
             if [[ -z "$DEBUG_SET" ]]; then
@@ -488,7 +488,7 @@ mkdir -p $K8S_CLUSTER_MUTATINGWEBHOOK_YAML_OUTPUT
 kubectl version 1>"${K8S_VERSION}/kubectl.version" 2>/dev/null
 
 #grab postmortem version 
-echo "Postmortem Version: $BUILDINGLINK" 1>"${K8S_VERSION}/postmortem.version" 2>/dev/null
+echo "Postmortem Version: $PMCOMMITURL" 1>"${K8S_VERSION}/postmortem.version" 2>/dev/null
 
 #----------------------------------- collect cluster specific data ------------------------------------
 #node
