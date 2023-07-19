@@ -9,7 +9,7 @@
 #
 
 #parse passed arguments
-PMVERSION='6f749d0813bf8f085df00a1de23119904d4f8137'
+PMVERSION='97072fdc96519586066ca541f2dcb9044c4eb804'
 BUILDINGLINK="https://github.com/ibm-apiconnect/v10-postmortem/commit/$PMVERSION"
 echo "Postmortem Version: $BUILDINGLINK"
 
