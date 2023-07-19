@@ -9,7 +9,7 @@
 #
 
 #parse passed arguments
-PMCOMMIT='97072fdc96519586066ca541f2dcb9044c4eb804'
+PMCOMMIT='33f111daa2f772e18d43246510440212de0c03f7'
 PMCOMMITURL="https://github.com/ibm-apiconnect/v10-postmortem/commit/$PMCOMMIT"
 echo "Postmortem Version: $PMCOMMITURL"
 
