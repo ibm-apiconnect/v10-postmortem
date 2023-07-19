@@ -12,7 +12,7 @@ jobs:
           input="./generate_postmortem.sh"
           COMM=`git rev-parse HEAD`
           CURRENTCOMMIT="PMVERSION='$COMM'"
-          sed -i -e "s|PMVERSION=.*|$CURRENTCOMMIT|g" ${GITHUB_WORKSPACE}/file.sh
+          sed -i -e "s|PMVERSION=.*|$CURRENTCOMMIT|g" ${GITHUB_WORKSPACE}/generate_postmortem.sh
           git config --global user.name "actionbot"
           git config --global user.email "githubactions" 
           git commit -a -m "Automatic update of version"
