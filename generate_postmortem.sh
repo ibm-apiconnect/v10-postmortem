@@ -11,7 +11,6 @@
 #parse passed arguments
 PMCOMMIT='33f111daa2f772e18d43246510440212de0c03f7'
 PMCOMMITURL="https://github.com/ibm-apiconnect/v10-postmortem/commit/$PMCOMMIT"
-echo "Postmortem Version: $PMCOMMITURL"
 
 for switch in $@; do
     case $switch in
@@ -150,6 +149,9 @@ for switch in $@; do
             ;;
     esac
 done
+
+#Printing Postmortem Version
+echo "Postmortem Version: $PMCOMMITURL"
 
 if [[ -z "$LOG_LIMIT" ]]; then
     LOG_LIMIT=""
