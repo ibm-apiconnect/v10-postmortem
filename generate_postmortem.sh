@@ -9,6 +9,10 @@
 #
 
 #parse passed arguments
+PMVERSION='6f749d0813bf8f085df00a1de23119904d4f8137'
+BUILDINGLINK="https://github.com/ibm-apiconnect/v10-postmortem/commit/$PMVERSION"
+echo "Postmortem Version: $BUILDINGLINK"
+
 for switch in $@; do
     case $switch in
         *"-h"*|*"--help"*)
@@ -38,6 +42,7 @@ for switch in $@; do
             echo -e ""
             echo -e "--debug:                 Set to enable verbose logging."
             echo -e ""
+            echo -e "--version:               Show postmortem version"
             exit 0
             ;;
         *"--debug"*)
@@ -133,6 +138,10 @@ for switch in $@; do
                 exit 1
             fi
             chmod +x $SCRIPT_LOCATION
+            ;;
+        *"--version"*)
+            echo "Postmortem Version: $BUILDINGLINK"
+            exit 1
             ;;
         *)
             if [[ -z "$DEBUG_SET" ]]; then
@@ -477,6 +486,9 @@ mkdir -p $K8S_CLUSTER_MUTATINGWEBHOOK_YAML_OUTPUT
 
 #grab kubernetes version
 kubectl version 1>"${K8S_VERSION}/kubectl.version" 2>/dev/null
+
+#grab postmortem version 
+echo "Postmortem Version: $BUILDINGLINK" 1>"${K8S_VERSION}/postmortem.version" 2>/dev/null
 
 #----------------------------------- collect cluster specific data ------------------------------------
 #node
