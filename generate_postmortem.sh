@@ -9,6 +9,9 @@
 #
 
 #parse passed arguments
+PMCOMMIT='dee6a178e1eca300c155fbdcc7d7494634b4103b'
+PMCOMMITURL="https://github.com/ibm-apiconnect/v10-postmortem/commit/$PMCOMMIT"
+
 for switch in $@; do
     case $switch in
         *"-h"*|*"--help"*)
@@ -38,6 +41,7 @@ for switch in $@; do
             echo -e ""
             echo -e "--debug:                 Set to enable verbose logging."
             echo -e ""
+            echo -e "--version:               Show postmortem version"
             exit 0
             ;;
         *"--debug"*)
@@ -134,6 +138,10 @@ for switch in $@; do
             fi
             chmod +x $SCRIPT_LOCATION
             ;;
+        *"--version"*)
+            echo "Postmortem Version: $PMCOMMITURL"
+            exit 0
+            ;;
         *)
             if [[ -z "$DEBUG_SET" ]]; then
                 set +e
@@ -141,6 +149,9 @@ for switch in $@; do
             ;;
     esac
 done
+
+#Printing Postmortem Version
+echo "Postmortem Version: $PMCOMMITURL"
 
 if [[ -z "$LOG_LIMIT" ]]; then
     LOG_LIMIT=""
@@ -477,6 +488,9 @@ mkdir -p $K8S_CLUSTER_MUTATINGWEBHOOK_YAML_OUTPUT
 
 #grab kubernetes version
 kubectl version 1>"${K8S_VERSION}/kubectl.version" 2>/dev/null
+
+#grab postmortem version 
+echo "Postmortem Version: $PMCOMMITURL" 1>"${K8S_VERSION}/postmortem.version" 2>/dev/null
 
 #----------------------------------- collect cluster specific data ------------------------------------
 #node
