@@ -265,6 +265,21 @@ if [[ $? -eq 0 && $SPECIFIC_NAMESPACES -ne 1 ]]; then
     NAMESPACE_LIST+=" ibm-common-services"
 fi
 
+kubectl get ns 2>/dev/null | grep -q "openshift-marketplace"
+if [[ $? -eq 0 && $SPECIFIC_NAMESPACES -ne 1 ]]; then
+    NAMESPACE_LIST+=" openshift-marketplace"
+fi
+
+kubectl get ns 2>/dev/null | grep -q "openshift-operators"
+if [[ $? -eq 0 && $SPECIFIC_NAMESPACES -ne 1 ]]; then
+    NAMESPACE_LIST+=" openshift-operators"
+fi
+
+kubectl get ns 2>/dev/null | grep -q "openshift-operator-lifecycle-manager"
+if [[ $? -eq 0 && $SPECIFIC_NAMESPACES -ne 1 ]]; then
+    NAMESPACE_LIST+=" openshift-operator-lifecycle-manager"
+fi
+
 #================================================= pull ova data =================================================
 if [[ $IS_OVA -eq 1 ]]; then
     OVA_DATA="${TEMP_PATH}/ova"
