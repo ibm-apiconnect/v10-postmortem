@@ -5,6 +5,7 @@ With the move to API Connect v10, **helm** is not longer used as part of the dep
 ## Notes
 - For usage information with the tool, use the command `./generate_postmortem.sh --help`
 - The namespace is now automatically detected.  If the namespace is not correctly detected, use the switch `--extra-namespaces` to set the correct value.  For example `--extra-namespaces=apiconnect`.
+- While the postmortem collection script is running, it is expected that the CPU and I/O load for the APIC deployment and its host cluster/VM will be increased. 
 
 ## Pre-Requisite
 - If EDB is deployed you will need the kubectl-cnp [plugin](https://www.enterprisedb.com/docs/postgres_for_kubernetes/latest/cnp-plugin) to gather appropriate EDB logs
