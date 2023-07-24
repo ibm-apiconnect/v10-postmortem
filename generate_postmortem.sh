@@ -9,7 +9,7 @@
 #
 
 #parse passed arguments
-PMCOMMIT='f55f14af75d22613a6581d80b0164a21d9d733ac'
+PMCOMMIT='57ec8d02c159c8101495ed95e121205ed318a976'
 PMCOMMITURL="https://github.com/ibm-apiconnect/v10-postmortem/blob/$PMCOMMIT/generate_postmortem.sh"
 
 for switch in $@; do
