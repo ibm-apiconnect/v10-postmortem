@@ -1,7 +1,9 @@
 name: Hash of last commit 
 
 on: 
-  push 
+  push: 
+    branches: 
+    - 'master'
 jobs:
   thisOne: 
     runs-on: macos-latest
