@@ -250,20 +250,14 @@ mkdir -p $TEMP_PATH
 kubectl get pods --all-namespaces 2>/dev/null | egrep -q "metrics-server|openshift-monitoring"
 OUTPUT_METRICS=$?
 
-kubectl get ns 2>/dev/null | grep -q "rook-ceph"
-if [[ $? -eq 0 && $SPECIFIC_NAMESPACES -ne 1 ]]; then
-    NAMESPACE_LIST+=" rook-ceph"
-fi
-
-kubectl get ns 2>/dev/null | grep -q "rook-ceph-system"
-if [[ $? -eq 0 && $SPECIFIC_NAMESPACES -ne 1 ]]; then
-    NAMESPACE_LIST+=" rook-ceph-system"
-fi
-
-kubectl get ns 2>/dev/null | grep -q "ibm-common-services"
-if [[ $? -eq 0 && $SPECIFIC_NAMESPACES -ne 1 ]]; then
-    NAMESPACE_LIST+=" ibm-common-services"
-fi
+#Namespaces
+for NAMESPACE_OPTIONS in "rook-ceph" "rook-ceph-system" "ibm-common-services" "openshift-marketplace" "openshift-operators" "openshift-operator-lifecycle-manager" ;
+    do 
+        kubectl get ns 2>/dev/null | grep -q "$NAMESPACE_OPTIONS"
+        if [[ $? -eq 0 && $SPECIFIC_NAMESPACES -ne 1 ]]; then
+            NAMESPACE_LIST+=" $NAMESPACE_OPTIONS"
+        fi
+    done
 
 #================================================= pull ova data =================================================
 if [[ $IS_OVA -eq 1 ]]; then
