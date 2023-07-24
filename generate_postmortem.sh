@@ -250,34 +250,23 @@ mkdir -p $TEMP_PATH
 kubectl get pods --all-namespaces 2>/dev/null | egrep -q "metrics-server|openshift-monitoring"
 OUTPUT_METRICS=$?
 
-kubectl get ns 2>/dev/null | grep -q "rook-ceph"
-if [[ $? -eq 0 && $SPECIFIC_NAMESPACES -ne 1 ]]; then
-    NAMESPACE_LIST+=" rook-ceph"
-fi
 
-kubectl get ns 2>/dev/null | grep -q "rook-ceph-system"
-if [[ $? -eq 0 && $SPECIFIC_NAMESPACES -ne 1 ]]; then
-    NAMESPACE_LIST+=" rook-ceph-system"
-fi
+#Namespaces 
+ROOK_CEPH="rook-ceph"
+ROOK_CEPH_SYSTEM="rook-ceph-system"
+IBM_COMMON_SERVICES="ibm-common-services" 
+OPENSHIFT_MARKETPLACE="openshift-marketplace" 
+OPENSHIFT_OPERATORS="openshift-operators"
+OPENSHIFT_OPERATOR_LIFECYCLE_MANAGER="openshift-operator-lifecycle-manager"
 
-kubectl get ns 2>/dev/null | grep -q "ibm-common-services"
-if [[ $? -eq 0 && $SPECIFIC_NAMESPACES -ne 1 ]]; then
-    NAMESPACE_LIST+=" ibm-common-services"
-fi
-kubectl get ns 2>/dev/null | grep -q "openshift-marketplace"
-if [[ $? -eq 0 && $SPECIFIC_NAMESPACES -ne 1 ]]; then
-    NAMESPACE_LIST+=" openshift-marketplace"
-fi
-
-kubectl get ns 2>/dev/null | grep -q "openshift-operators"
-if [[ $? -eq 0 && $SPECIFIC_NAMESPACES -ne 1 ]]; then
-    NAMESPACE_LIST+=" openshift-operators"
-fi
-
-kubectl get ns 2>/dev/null | grep -q "openshift-operator-lifecycle-manager"
-if [[ $? -eq 0 && $SPECIFIC_NAMESPACES -ne 1 ]]; then
-    NAMESPACE_LIST+=" openshift-operator-lifecycle-manager"
-fi
+NAMESPACE_OPTIONS=("ROOK_CEPH" "ROOK_CEPH_SYSTEM" "IBM_COMMON_SERVICES" "OPENSHIFT_MARKETPLACE" "OPENSHIFT_OPERATORS" "OPENSHIFT_OPERATOR_LIFECYCLE_MANAGER")
+for CURRENT_NAMESPACE in "${NAMESPACE_OPTIONS[@]}"; do 
+    NAMESPACE_RUNNING="${!CURRENT_NAMESPACE}"
+    kubectl get ns 2>/dev/null | grep -q "$NAMESPACE_RUNNING"
+    if [[ $? -eq 0 && $SPECIFIC_NAMESPACES -ne 1 ]]; then
+        NAMESPACE_LIST+=" $NAMESPACE_RUNNING"
+    fi
+done
 
 #================================================= pull ova data =================================================
 if [[ $IS_OVA -eq 1 ]]; then
