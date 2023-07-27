@@ -18,7 +18,6 @@ else
     KUBECTL="kubectl"
 fi
 
-echo "$KUBECTL"
 
 for switch in $@; do
     case $switch in
