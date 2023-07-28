@@ -12,13 +12,19 @@
 PMCOMMIT='2dd0cdbf54c3d7642bb3f3f101a983d36e70ee2c'
 PMCOMMITURL="https://github.com/ibm-apiconnect/v10-postmortem/blob/$PMCOMMIT/generate_postmortem.sh"
 
-KUBECTL="kubectl"
-
-#Checking to see if oc is an option
+#Confirm whether oc or kubectl exists and choose which command tool to use based on that
 which oc &> /dev/null
 if [[ $? -eq 0 ]]; then
     KUBECTL="oc"
+else
+    which kubectl &> /dev/null
+    if [[ $? -ne 0 ]]; then
+        echo "Unable to locate the command [kubectl] nor [oc] in the path.  Either install or add it to the path.  EXITING..."
+        exit 1
+    fi
+    KUBECTL="kubectl"
 fi
+echo "using [$KUBECTL] command for cluster cli"
 
 
 for switch in $@; do
@@ -176,11 +182,6 @@ fi
 
 #====================================== Confirm pre-reqs and init variables ======================================
 #------------------------------- Make sure all necessary commands exists ------------------------------
-which $KUBECTL &> /dev/null
-if [[ $? -ne 0 ]]; then
-    echo "Unable to locate the command [$KUBECTL] in the path.  Either install or add it to the path.  EXITING..."
-    exit 1
-fi
 
 ARCHIVE_UTILITY=`which zip 2>/dev/null`
 if [[ $? -ne 0 ]]; then
