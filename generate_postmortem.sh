@@ -13,6 +13,9 @@ NUMERICALVERSION=0
 PMCOMMITDATE='Thu Jul 27 23:05:40 UTC 2023'
 PMCOMMIT='a25871ce7766f657f0c80a5cf113d7e8d99f42a2'
 PMCOMMITURL="https://github.com/ibm-apiconnect/v10-postmortem/blob/$PMCOMMIT/generate_postmortem.sh"
+ print_postmortem_version(){
+    echo "Postmortem Version: $NUMERICALVERSION, Date: $PMCOMMITDATE, URL: $PMCOMMITURL"
+ }
 
 #Confirm whether oc or kubectl exists and choose which command tool to use based on that
 which oc &> /dev/null
@@ -156,7 +159,7 @@ for switch in $@; do
             chmod +x $SCRIPT_LOCATION
             ;;
         *"--version"*)
-            echo "Postmortem Version: $NUMERICALVERSION, Date: $PMCOMMITDATE, URL $PMCOMMITURL"
+            print_postmortem_version
             exit 0
             ;;
         *)
@@ -168,7 +171,7 @@ for switch in $@; do
 done
 
 #Printing Postmortem Version
-echo "Postmortem Version: $NUMERICALVERSION, Date: $PMCOMMITDATE, URL $PMCOMMITURL"
+print_postmortem_version
 
 if [[ -z "$LOG_LIMIT" ]]; then
     LOG_LIMIT=""
@@ -496,7 +499,7 @@ mkdir -p $K8S_CLUSTER_MUTATINGWEBHOOK_YAML_OUTPUT
 $KUBECTL version 1>"${K8S_VERSION}/$KUBECTL.version" 2>/dev/null
 
 #grab postmortem version 
-echo "Postmortem Version: $NUMERICALVERSION, Date: $PMCOMMITDATE, URL $PMCOMMITURL" 1>"${K8S_VERSION}/postmortem.version" 2>/dev/null
+print_postmortem_version 1>"${K8S_VERSION}/postmortem.version" 2>/dev/null
 #----------------------------------- collect cluster specific data ------------------------------------
 #node
 OUTPUT=`$KUBECTL get nodes 2>/dev/null`
