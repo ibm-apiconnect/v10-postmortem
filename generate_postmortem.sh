@@ -9,7 +9,7 @@
 #
 
 #parse passed arguments
-PMCOMMIT='2dd0cdbf54c3d7642bb3f3f101a983d36e70ee2c'
+PMCOMMIT='a25871ce7766f657f0c80a5cf113d7e8d99f42a2'
 PMCOMMITURL="https://github.com/ibm-apiconnect/v10-postmortem/blob/$PMCOMMIT/generate_postmortem.sh"
 
 #Confirm whether oc or kubectl exists and choose which command tool to use based on that
