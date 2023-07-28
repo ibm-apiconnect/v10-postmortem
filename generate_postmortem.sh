@@ -12,6 +12,21 @@
 PMCOMMIT='2dd0cdbf54c3d7642bb3f3f101a983d36e70ee2c'
 PMCOMMITURL="https://github.com/ibm-apiconnect/v10-postmortem/blob/$PMCOMMIT/generate_postmortem.sh"
 
+#Confirm whether oc or kubectl exists and choose which command tool to use based on that
+which oc &> /dev/null
+if [[ $? -eq 0 ]]; then
+    KUBECTL="oc"
+else
+    which kubectl &> /dev/null
+    if [[ $? -ne 0 ]]; then
+        echo "Unable to locate the command [kubectl] nor [oc] in the path.  Either install or add it to the path.  EXITING..."
+        exit 1
+    fi
+    KUBECTL="kubectl"
+fi
+echo "using [$KUBECTL] command for cluster cli"
+
+
 for switch in $@; do
     case $switch in
         *"-h"*|*"--help"*)
@@ -66,7 +81,7 @@ for switch in $@; do
             ;;
         *"--diagnostic-manager"*)
             DIAG_MANAGER=1
-            EDB_CLUSTER_NAME=$(kubectl get cluster --all-namespaces -o=jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+            EDB_CLUSTER_NAME=$($KUBECTL get cluster --all-namespaces -o=jsonpath='{.items[0].metadata.name}' 2>/dev/null)
             if [[ -z "$EDB_CLUSTER_NAME" ]]; then
                 COLLECT_CRUNCHY=1
                 SCRIPT_LOCATION="`pwd`/crunchy_gather.py"
@@ -167,11 +182,6 @@ fi
 
 #====================================== Confirm pre-reqs and init variables ======================================
 #------------------------------- Make sure all necessary commands exists ------------------------------
-which kubectl &> /dev/null
-if [[ $? -ne 0 ]]; then
-    echo "Unable to locate the command [kubectl] in the path.  Either install or add it to the path.  EXITING..."
-    exit 1
-fi
 
 ARCHIVE_UTILITY=`which zip 2>/dev/null`
 if [[ $? -ne 0 ]]; then
@@ -247,13 +257,13 @@ echo -e "Generating postmortem, please wait..."
 mkdir -p $TEMP_PATH
 
 #determine if metrics is installed
-kubectl get pods --all-namespaces 2>/dev/null | egrep -q "metrics-server|openshift-monitoring"
+$KUBECTL get pods --all-namespaces 2>/dev/null | egrep -q "metrics-server|openshift-monitoring"
 OUTPUT_METRICS=$?
 
 #Namespaces
 for NAMESPACE_OPTIONS in "rook-ceph" "rook-ceph-system" "ibm-common-services" "openshift-marketplace" "openshift-operators" "openshift-operator-lifecycle-manager" ;
     do 
-        kubectl get ns 2>/dev/null | grep -q "$NAMESPACE_OPTIONS"
+        $KUBECTL get ns 2>/dev/null | grep -q "$NAMESPACE_OPTIONS"
         if [[ $? -eq 0 && $SPECIFIC_NAMESPACES -ne 1 ]]; then
             NAMESPACE_LIST+=" $NAMESPACE_OPTIONS"
         fi
@@ -306,7 +316,7 @@ fi
 
 #============================================== autodetect namespaces ============================================
 if [[ $AUTO_DETECT -eq 1 ]]; then
-    NS_LISTING=`kubectl get ns 2>/dev/null | sed -e '1d' | egrep -v "kube-system|cert-manager|rook|certmanager"`
+    NS_LISTING=`$KUBECTL get ns 2>/dev/null | sed -e '1d' | egrep -v "kube-system|cert-manager|rook|certmanager"`
 
     SUBSYS_MANAGER="ISNOTSET"
     SUBSYS_ANALYTICS="ISNOTSET"
@@ -331,7 +341,7 @@ if [[ $AUTO_DETECT -eq 1 ]]; then
         ns=`echo "${line}" | awk '{print $1}'`
 
         for cluster in ${CLUSTER_LIST[@]}; do
-            OUTPUT=`kubectl get -n $ns $cluster 2>/dev/null`
+            OUTPUT=`$KUBECTL get -n $ns $cluster 2>/dev/null`
             if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
                 OUTPUT=`echo "${OUTPUT}" | grep -v NAME`
                 while read line; do
@@ -481,21 +491,21 @@ mkdir -p $K8S_CLUSTER_MUTATINGWEBHOOK_YAML_OUTPUT
 #------------------------------------------------------------------------------------------------------
 
 #grab kubernetes version
-kubectl version 1>"${K8S_VERSION}/kubectl.version" 2>/dev/null
+$KUBECTL version 1>"${K8S_VERSION}/$KUBECTL.version" 2>/dev/null
 
 #grab postmortem version 
 echo "Postmortem Version: $PMCOMMITURL" 1>"${K8S_VERSION}/postmortem.version" 2>/dev/null
 
 #----------------------------------- collect cluster specific data ------------------------------------
 #node
-OUTPUT=`kubectl get nodes 2>/dev/null`
+OUTPUT=`$KUBECTL get nodes 2>/dev/null`
 if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
     echo "$OUTPUT" &> "${K8S_CLUSTER_NODE_DATA}/nodes.out"
     while read line; do
         name=`echo "$line" | awk -F ' ' '{print $1}'`
         role=`echo "$line" | awk -F ' ' '{print $3}'`
 
-        describe_stdout=`kubectl describe node $name 2>/dev/null`
+        describe_stdout=`$KUBECTL describe node $name 2>/dev/null`
         if [[ $? -eq 0 && ${#describe_stdout} -gt 0 ]]; then
             if [[ -z "$role" ]]; then
                 echo "$describe_stdout" > "${K8S_CLUSTER_NODE_DATA}/describe-${name}.out"
@@ -515,7 +525,7 @@ if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
     done <<< "$OUTPUT"
 
     if [[ $OUTPUT_METRICS -eq 0 ]]; then
-        kubectl top nodes &> "${K8S_CLUSTER_NODE_DATA}/top.out"
+        $KUBECTL top nodes &> "${K8S_CLUSTER_NODE_DATA}/top.out"
         [ $? -eq 0 ] || rm -f "${K8S_CLUSTER_NODE_DATA}/top.out"
     fi
 else
@@ -527,10 +537,10 @@ if [[ -z "$ARCHIVE_FILE" ]]; then
 fi
 
 #cluster roles
-OUTPUT=`kubectl get clusterroles 2>/dev/null | cut -d' ' -f1`
+OUTPUT=`$KUBECTL get clusterroles 2>/dev/null | cut -d' ' -f1`
 if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
     while read line; do
-        kubectl describe clusterrole $line &> "${K8S_CLUSTER_ROLE_DATA}/${line}.out"
+        $KUBECTL describe clusterrole $line &> "${K8S_CLUSTER_ROLE_DATA}/${line}.out"
         [ $? -eq 0 ] || rm -f "${K8S_CLUSTER_ROLE_DATA}/${line}.out"
     done <<< "$OUTPUT"
 else
@@ -538,10 +548,10 @@ else
 fi
 
 #cluster rolebindings
-OUTPUT=`kubectl get clusterrolebindings 2>/dev/null | cut -d' ' -f1`
+OUTPUT=`$KUBECTL get clusterrolebindings 2>/dev/null | cut -d' ' -f1`
 if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
     while read line; do
-        kubectl describe clusterrolebinding $line &> "${K8S_CLUSTER_ROLEBINDING_DATA}/${line}.out"
+        $KUBECTL describe clusterrolebinding $line &> "${K8S_CLUSTER_ROLEBINDING_DATA}/${line}.out"
         [ $? -eq 0 ] || rm -f "${K8S_CLUSTER_ROLEBINDING_DATA}/${line}.out"
     done <<< "$OUTPUT"
 else
@@ -549,34 +559,34 @@ else
 fi
 
 #crds
-OUTPUT=`kubectl get crds 2>/dev/null`
+OUTPUT=`$KUBECTL get crds 2>/dev/null`
 if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
     echo "$OUTPUT" > "${K8S_CLUSTER_CRD_DATA}/crd.out"
     while read line; do
         crd=`echo "$line" | cut -d' ' -f1`
-        kubectl describe crd $crd &>"${K8S_CLUSTER_CRD_DESCRIBE_DATA}/${crd}.out"
+        $KUBECTL describe crd $crd &>"${K8S_CLUSTER_CRD_DESCRIBE_DATA}/${crd}.out"
         [ $? -eq 0 ] || rm -f "${K8S_CLUSTER_CRD_DESCRIBE_DATA}/${crd}.out"
     done <<< "$OUTPUT"
 fi
 
 #pv
-OUTPUT=`kubectl get pv 2>/dev/null`
+OUTPUT=`$KUBECTL get pv 2>/dev/null`
 if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
     echo "$OUTPUT" > "${K8S_CLUSTER_PV_DATA}/pv.out"
     while read line; do
         pv=`echo "$line" | cut -d' ' -f1`
-        kubectl describe pv $pv &>"${K8S_CLUSTER_PV_DESCRIBE_DATA}/${pv}.out"
+        $KUBECTL describe pv $pv &>"${K8S_CLUSTER_PV_DESCRIBE_DATA}/${pv}.out"
         [ $? -eq 0 ] || rm -f "${K8S_CLUSTER_PV_DESCRIBE_DATA}/${pv}.out"
     done <<< "$OUTPUT"
 fi
 
 #storageclasses
-OUTPUT=`kubectl get storageclasses 2>/dev/null`
+OUTPUT=`$KUBECTL get storageclasses 2>/dev/null`
 if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
     echo "$OUTPUT" > "${K8S_CLUSTER_STORAGECLASS_DATA}/storageclasses.out"
     while read $line; do
         sc=`echo "$line" | cut -d' ' -f1`
-        kubectl describe storageclasses $sc &>"${K8S_CLUSTER_STORAGECLASS_DESCRIBE_DATA}/${sc}.out"
+        $KUBECTL describe storageclasses $sc &>"${K8S_CLUSTER_STORAGECLASS_DESCRIBE_DATA}/${sc}.out"
         [ $? -eq 0 ] || rm -f "${K8S_CLUSTER_STORAGECLASS_DESCRIBE_DATA}/${sc}.out"
     done <<< "$OUTPUT"
 fi
@@ -586,13 +596,13 @@ if [[ $PERFORMANCE_CHECK -eq 1 ]]; then
     if [[ $IS_OVA -eq 1 ]]; then
         apic stage etcd-check-perf -l debug &> ${K8S_CLUSTER_PERFORMANCE}/etcd-performance.out # ova has special `apic stage` command that will run the etcd performance check and a defrag after
     else
-        ETCD_POD=`kubectl get pod -n kube-system --selector component=etcd -o=jsonpath={.items[0].metadata.name} 2>/dev/null` # retrieve name of etcd pod to exec
+        ETCD_POD=`$KUBECTL get pod -n kube-system --selector component=etcd -o=jsonpath={.items[0].metadata.name} 2>/dev/null` # retrieve name of etcd pod to exec
         # parse out etcd certs from pod describe
-        ETCD_CA_FILE=`kubectl describe pod -n kube-system ${ETCD_POD} | grep "\--trusted-ca-file" | cut -f2 -d"=" 2>/dev/null`
-        ETCD_CERT_FILE=`kubectl describe pod -n kube-system ${ETCD_POD} | grep "\--cert-file" | cut -f2 -d"=" 2>/dev/null`
-        ETCD_KEY_FILE=`kubectl describe pod -n kube-system ${ETCD_POD} | grep "\--key-file" | cut -f2 -d"=" 2>/dev/null`
+        ETCD_CA_FILE=`$KUBECTL describe pod -n kube-system ${ETCD_POD} | grep "\--trusted-ca-file" | cut -f2 -d"=" 2>/dev/null`
+        ETCD_CERT_FILE=`$KUBECTL describe pod -n kube-system ${ETCD_POD} | grep "\--cert-file" | cut -f2 -d"=" 2>/dev/null`
+        ETCD_KEY_FILE=`$KUBECTL describe pod -n kube-system ${ETCD_POD} | grep "\--key-file" | cut -f2 -d"=" 2>/dev/null`
 
-        OUTPUT=`kubectl exec -n kube-system ${ETCD_POD} -- sh -c "export ETCDCTL_API=3; etcdctl member list --cacert=${ETCD_CA_FILE} --cert=${ETCD_CERT_FILE} --key=${ETCD_KEY_FILE} 2>/dev/null"`
+        OUTPUT=`$KUBECTL exec -n kube-system ${ETCD_POD} -- sh -c "export ETCDCTL_API=3; etcdctl member list --cacert=${ETCD_CA_FILE} --cert=${ETCD_CERT_FILE} --key=${ETCD_KEY_FILE} 2>/dev/null"`
 
         # parsing endpoints from etcd member list
         ENDPOINTS=''
@@ -607,22 +617,22 @@ if [[ $PERFORMANCE_CHECK -eq 1 ]]; then
         ENDPOINTS=${ENDPOINTS%,} # strip trailing comma
 
         # run etcd performance check
-        OUTPUT=`kubectl exec -n kube-system ${ETCD_POD} -- sh -c "export ETCDCTL_API=3; etcdctl check perf --endpoints="${ENDPOINTS}" --cacert=${ETCD_CA_FILE} --cert=${ETCD_CERT_FILE} --key=${ETCD_KEY_FILE}"`
+        OUTPUT=`$KUBECTL exec -n kube-system ${ETCD_POD} -- sh -c "export ETCDCTL_API=3; etcdctl check perf --endpoints="${ENDPOINTS}" --cacert=${ETCD_CA_FILE} --cert=${ETCD_CERT_FILE} --key=${ETCD_KEY_FILE}"`
         echo "${OUTPUT}" > ${K8S_CLUSTER_PERFORMANCE}/etcd-performance.out
 
         # run recommeneded `etcdctl defrag` to free up storage space
-        OUTPUT=`kubectl exec -n kube-system ${ETCD_POD} -- sh -c "export ETCDCTL_API=3; etcdctl defrag --endpoints="${ENDPOINTS}" --cacert=${ETCD_CA_FILE} --cert=${ETCD_CERT_FILE} --key=${ETCD_KEY_FILE}"`
+        OUTPUT=`$KUBECTL exec -n kube-system ${ETCD_POD} -- sh -c "export ETCDCTL_API=3; etcdctl defrag --endpoints="${ENDPOINTS}" --cacert=${ETCD_CA_FILE} --cert=${ETCD_CERT_FILE} --key=${ETCD_KEY_FILE}"`
         echo "${OUTPUT}" > ${K8S_CLUSTER_PERFORMANCE}/etcd-defrag.out
     fi
 fi
 
 #grab validataingwebhookconfiguation data
-OUTPUT=`kubectl get validatingwebhookconfiguration 2>/dev/null`
+OUTPUT=`$KUBECTL get validatingwebhookconfiguration 2>/dev/null`
 if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
     echo "$OUTPUT" > "${K8S_CLUSTER_VALIDATINGWEBHOOK_CONFIGURATIONS}/validatingwebhookconfiguration.out"
     while read line; do
         vwc=`echo "$line" | cut -d' ' -f1`
-        kubectl get validatingwebhookconfiguration $vwc -o yaml &> "${K8S_CLUSTER_VALIDATINGWEBHOOK_YAML_OUTPUT}/${vwc}.yaml"
+        $KUBECTL get validatingwebhookconfiguration $vwc -o yaml &> "${K8S_CLUSTER_VALIDATINGWEBHOOK_YAML_OUTPUT}/${vwc}.yaml"
         [ $? -eq 0 ] || rm -f "${K8S_CLUSTER_VALIDATINGWEBHOOK_YAML_OUTPUT}/${vwc}.yaml"
 
     done <<< "$OUTPUT"
@@ -631,12 +641,12 @@ else
 fi
 
 #grab mutatingwebhookconfiguration data
-OUTPUT=`kubectl get mutatingwebhookconfiguration 2>/dev/null`
+OUTPUT=`$KUBECTL get mutatingwebhookconfiguration 2>/dev/null`
 if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
     echo "$OUTPUT" > "${K8S_CLUSTER_MUTATINGWEBHOOK_CONFIGURATIONS}/mutatingwebhookconfiguration.out"
     while read line; do
         mwc=`echo "$line" | cut -d' ' -f1`
-        kubectl get mutatingwebhookconfiguration $mwc -o yaml &> "${K8S_CLUSTER_MUTATINGWEBHOOK_YAML_OUTPUT}/${mwc}.yaml"
+        $KUBECTL get mutatingwebhookconfiguration $mwc -o yaml &> "${K8S_CLUSTER_MUTATINGWEBHOOK_YAML_OUTPUT}/${mwc}.yaml"
         [ $? -eq 0 ] || rm -f "${K8S_CLUSTER_MUTATINGWEBHOOK_YAML_OUTPUT}/${mwc}.yaml"
 
     done <<< "$OUTPUT"
@@ -786,32 +796,32 @@ for NAMESPACE in $NAMESPACE_LIST; do
     #grab cluster configuration, equivalent to "apiconnect-up.yml" which now resides in cluster
     CLUSTER_LIST=(apic AnalyticsBackups AnalyticsClusters AnalyticsRestores APIConnectClusters DataPowerServices DataPowerMonitors EventEndpointManager EventGatewayClusters GatewayClusters ManagementBackups ManagementClusters ManagementDBUpgrades ManagementRestores NatsClusters NatsServiceRoles NatsStreamingClusters PGClusters PGPolicies PGReplicas PGTasks PortalBackups PortalClusters PortalRestores PortalSecretRotations)
     for cluster in ${CLUSTER_LIST[@]}; do
-        OUTPUT=`kubectl get -n $NAMESPACE $cluster 2>/dev/null`
+        OUTPUT=`$KUBECTL get -n $NAMESPACE $cluster 2>/dev/null`
         if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
             echo "${OUTPUT}" > "${K8S_NAMESPACES_CLUSTER_DATA}/${cluster}.out"
 
-            kubectl describe $cluster -n $NAMESPACE &>"${K8S_NAMESPACES_CLUSTER_DESCRIBE_DATA}/${cluster}.out"
+            $KUBECTL describe $cluster -n $NAMESPACE &>"${K8S_NAMESPACES_CLUSTER_DESCRIBE_DATA}/${cluster}.out"
             [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_CLUSTER_DESCRIBE_DATA}/${cluster}.out"
 
-            kubectl get $cluster -n $NAMESPACE -o yaml &>"${K8S_NAMESPACES_CLUSTER_YAML_OUTPUT}/${cluster}.yaml"
+            $KUBECTL get $cluster -n $NAMESPACE -o yaml &>"${K8S_NAMESPACES_CLUSTER_YAML_OUTPUT}/${cluster}.yaml"
             [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_CLUSTER_YAML_OUTPUT}/${cluster}.yaml"
         fi
     done
 
     #grab lists
-    OUTPUT=`kubectl get events -n $NAMESPACE 2>/dev/null`
+    OUTPUT=`$KUBECTL get events -n $NAMESPACE 2>/dev/null`
     [[ $? -ne 0 || ${#OUTPUT} -eq 0 ]] ||  echo "$OUTPUT" > "${K8S_NAMESPACES_LIST_DATA}/events.out"
-    OUTPUT=`kubectl get hpa -n $NAMESPACE 2>/dev/null`
+    OUTPUT=`$KUBECTL get hpa -n $NAMESPACE 2>/dev/null`
     [[ $? -ne 0 || ${#OUTPUT} -eq 0 ]] ||  echo "$OUTPUT" > "${K8S_NAMESPACES_LIST_DATA}/hpa.out"
 
     #grab ingress/routes then check each
-    OUTPUT=`kubectl get ingress -n $NAMESPACE 2>/dev/null`
+    OUTPUT=`$KUBECTL get ingress -n $NAMESPACE 2>/dev/null`
     if [[ ${#OUTPUT} -gt 0 ]]; then
         ir_outfile="ingress.out"
         ir_checks_outfile="ingress-checks.out"
         IS_OCP=0
     else
-        OUTPUT=`kubectl get routes -n $NAMESPACE 2>/dev/null`
+        OUTPUT=`$KUBECTL get routes -n $NAMESPACE 2>/dev/null`
         ir_outfile="routes.out"
         ir_checks_outfile="routes-checks.out"
         IS_OCP=1
@@ -824,7 +834,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
         echo "$OUTPUT" > $IR_OUTFILE
 
         #check if portal pods are available to use nslookup
-        OUTPUT1=`kubectl get pods -n $NAMESPACE 2>/dev/null | egrep -v "up|downloads" | egrep "portal.*www|-apim-|-client-|-ui-" | head -n1`
+        OUTPUT1=`$KUBECTL get pods -n $NAMESPACE 2>/dev/null | egrep -v "up|downloads" | egrep "portal.*www|-apim-|-client-|-ui-" | head -n1`
         if [[ ${#OUTPUT1} -gt 0 ]]; then
             nslookup_pod=`echo "${OUTPUT1}" | awk '{print $1}'`
         fi
@@ -846,7 +856,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
             ingress_list=`echo "${OUTPUT}" | grep -v NAME | awk -v p=$pos '{print $p}' | uniq`
             at_start=1
             while read ingress; do
-                nslookup_output=`kubectl exec -n $NAMESPACE $nslookup_pod -- nslookup $ingress 2>&1`
+                nslookup_output=`$KUBECTL exec -n $NAMESPACE $nslookup_pod -- nslookup $ingress 2>&1`
                 if [[ $at_start -eq 1 ]]; then
                     echo -e "${nslookup_output}" > $IR_CHECKS_OUTFILE
                 else
@@ -858,15 +868,15 @@ for NAMESPACE in $NAMESPACE_LIST; do
     fi
 
     #grab configmap data
-    OUTPUT=`kubectl get configmaps -n $NAMESPACE 2>/dev/null`
+    OUTPUT=`$KUBECTL get configmaps -n $NAMESPACE 2>/dev/null`
     if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
         echo "$OUTPUT" > "${K8S_NAMESPACES_CONFIGMAP_DATA}/configmaps.out"
         while read line; do
             cm=`echo "$line" | cut -d' ' -f1`
-            kubectl get configmap $cm -n $NAMESPACE -o yaml &>"${K8S_NAMESPACES_CONFIGMAP_YAML_OUTPUT}/${cm}.yaml"
+            $KUBECTL get configmap $cm -n $NAMESPACE -o yaml &>"${K8S_NAMESPACES_CONFIGMAP_YAML_OUTPUT}/${cm}.yaml"
             [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_CONFIGMAP_YAML_OUTPUTA}/${cm}.yaml"
 
-            kubectl describe configmap $cm -n $NAMESPACE &> "${K8S_NAMESPACES_CONFIGMAP_DESCRIBE_DATA}/${cm}.out"
+            $KUBECTL describe configmap $cm -n $NAMESPACE &> "${K8S_NAMESPACES_CONFIGMAP_DESCRIBE_DATA}/${cm}.out"
             [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_CONFIGMAP_DESCRIBE_DATA}/${cm}.out"
         done <<< "$OUTPUT"
     else
@@ -874,12 +884,12 @@ for NAMESPACE in $NAMESPACE_LIST; do
     fi
 
     #grab certs
-    OUTPUT=`kubectl get certs -n $NAMESPACE -o wide 2>/dev/null`
+    OUTPUT=`$KUBECTL get certs -n $NAMESPACE -o wide 2>/dev/null`
     if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
         echo "$OUTPUT" > "${K8S_NAMESPACES_CERTS}/certs.out"
         while read line; do
             crt=`echo "$line" | cut -d' ' -f1`
-            kubectl get certs $crt -n $NAMESPACE -o yaml &>"${K8S_NAMESPACES_CERTS_YAML_OUTPUT}/${crt}.yaml"
+            $KUBECTL get certs $crt -n $NAMESPACE -o yaml &>"${K8S_NAMESPACES_CERTS_YAML_OUTPUT}/${crt}.yaml"
             [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_CERTS_YAML_OUTPUT}/${crt}.yaml"
 
         done <<< "$OUTPUT"
@@ -888,12 +898,12 @@ for NAMESPACE in $NAMESPACE_LIST; do
     fi
 
     #grab issuers
-    OUTPUT=`kubectl get issuers -n $NAMESPACE -o wide 2>/dev/null`
+    OUTPUT=`$KUBECTL get issuers -n $NAMESPACE -o wide 2>/dev/null`
     if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
         echo "$OUTPUT" > "${K8S_NAMESPACES_ISSUERS}/issuers.out"
         while read line; do
             is=`echo "$line" | cut -d' ' -f1`
-            kubectl get issuers $is -n $NAMESPACE -o yaml &>"${K8S_NAMESPACES_ISSUERS_YAML_OUTPUT}/${is}.yaml"
+            $KUBECTL get issuers $is -n $NAMESPACE -o yaml &>"${K8S_NAMESPACES_ISSUERS_YAML_OUTPUT}/${is}.yaml"
             [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_ISSUERS_YAML_OUTPUT}/${is}.yaml"
 
         done <<< "$OUTPUT"
@@ -902,12 +912,12 @@ for NAMESPACE in $NAMESPACE_LIST; do
     fi
 
     #grab cronjob data
-    OUTPUT=`kubectl get cronjobs -n $NAMESPACE 2>/dev/null`
+    OUTPUT=`$KUBECTL get cronjobs -n $NAMESPACE 2>/dev/null`
     if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
         echo "$OUTPUT" > "${K8S_NAMESPACES_CRONJOB_DATA}/cronjobs.out"
         while read line; do
             cronjob=`echo "$line" | cut -d' ' -f1`
-            kubectl describe cronjob $cronjob -n $NAMESPACE &> "${K8S_NAMESPACES_CRONJOB_DESCRIBE_DATA}/${cronjob}.out"
+            $KUBECTL describe cronjob $cronjob -n $NAMESPACE &> "${K8S_NAMESPACES_CRONJOB_DESCRIBE_DATA}/${cronjob}.out"
             [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_CRONJOB_DESCRIBE_DATA}/${cronjob}.out"
         done <<< "$OUTPUT"
     else
@@ -916,7 +926,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
 
     #grab crunchy mustgather
     if [[ $COLLECT_CRUNCHY -eq 1 && "$NAMESPACE" != "kube-system" ]]; then
-        $CURRENT_PATH/crunchy_gather.py -n $NAMESPACE -l 5 -c kubectl -o $K8S_NAMESPACES_CRUNCHY_DATA &> "${K8S_NAMESPACES_CRUNCHY_DATA}/crunchy-collect.log"
+        $CURRENT_PATH/crunchy_gather.py -n $NAMESPACE -l 5 -c $KUBECTL -o $K8S_NAMESPACES_CRUNCHY_DATA &> "${K8S_NAMESPACES_CRUNCHY_DATA}/crunchy-collect.log"
     fi
 
     #grab edb mustgather
@@ -925,15 +935,15 @@ for NAMESPACE in $NAMESPACE_LIST; do
     fi
 
     #grab daemonset data
-    OUTPUT=`kubectl get daemonset -n $NAMESPACE 2>/dev/null`
+    OUTPUT=`$KUBECTL get daemonset -n $NAMESPACE 2>/dev/null`
     if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
         echo "$OUTPUT" > "${K8S_NAMESPACES_DAEMONSET_DATA}/daemonset.out"
         while read line; do
             ds=`echo "$line" | cut -d' ' -f1`
-            kubectl describe daemonset $ds -n $NAMESPACE &>"${K8S_NAMESPACES_DAEMONSET_DESCRIBE_DATA}/${ds}.out"
+            $KUBECTL describe daemonset $ds -n $NAMESPACE &>"${K8S_NAMESPACES_DAEMONSET_DESCRIBE_DATA}/${ds}.out"
             [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_DAEMONSET_DESCRIBE_DATA}/${ds}.out"
 
-            kubectl get daemonset $ds -o yaml -n $NAMESPACE &>"${K8S_NAMESPACES_DAEMONSET_YAML_OUTPUT}/${ds}.out"
+            $KUBECTL get daemonset $ds -o yaml -n $NAMESPACE &>"${K8S_NAMESPACES_DAEMONSET_YAML_OUTPUT}/${ds}.out"
             [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_DAEMONSET_YAML_OUTPUT}/${ds}.out"
         done <<< "$OUTPUT"
     else
@@ -941,15 +951,15 @@ for NAMESPACE in $NAMESPACE_LIST; do
     fi
 
     #grab deployment data
-    OUTPUT=`kubectl get deployments -n $NAMESPACE 2>/dev/null`
+    OUTPUT=`$KUBECTL get deployments -n $NAMESPACE 2>/dev/null`
     if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
         echo "$OUTPUT" > "${K8S_NAMESPACES_DEPLOYMENT_DATA}/deployments.out"
         while read line; do
             deployment=`echo "$line" | cut -d' ' -f1`
-            kubectl describe deployment $deployment -n $NAMESPACE &>"${K8S_NAMESPACES_DEPLOYMENT_DESCRIBE_DATA}/${deployment}.out"
+            $KUBECTL describe deployment $deployment -n $NAMESPACE &>"${K8S_NAMESPACES_DEPLOYMENT_DESCRIBE_DATA}/${deployment}.out"
             [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_DEPLOYMENT_DESCRIBE_DATA}/${deployment}.out"
 
-            kubectl get deployment $deployment -o yaml -n $NAMESPACE &>"${K8S_NAMESPACES_DEPLOYMENT_DESCRIBE_DATA}/${deployment}.out"
+            $KUBECTL get deployment $deployment -o yaml -n $NAMESPACE &>"${K8S_NAMESPACES_DEPLOYMENT_DESCRIBE_DATA}/${deployment}.out"
             [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_DEPLOYMENT_DESCRIBE_DATA}/${deployment}.out"
         done <<< "$OUTPUT"
     else
@@ -957,15 +967,15 @@ for NAMESPACE in $NAMESPACE_LIST; do
     fi
 
     #grab endpoint data
-    OUTPUT=`kubectl get endpoints -n $NAMESPACE 2>/dev/null`
+    OUTPUT=`$KUBECTL get endpoints -n $NAMESPACE 2>/dev/null`
     if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
         echo "$OUTPUT" > "${K8S_NAMESPACES_ENDPOINT_DATA}/endpoints.out"
         while read line; do
             endpoint=`echo "$line" | cut -d' ' -f1`
-            kubectl describe endpoints $endpoint -n $NAMESPACE &>"${K8S_NAMESPACES_ENDPOINT_DESCRIBE_DATA}/${endpoint}.out"
+            $KUBECTL describe endpoints $endpoint -n $NAMESPACE &>"${K8S_NAMESPACES_ENDPOINT_DESCRIBE_DATA}/${endpoint}.out"
             [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_ENDPOINT_DESCRIBE_DATA}/${endpoint}.out"
 
-            kubectl get endpoints $endpoint -o yaml -n $NAMESPACE &>"${K8S_NAMESPACES_ENDPOINT_YAML_OUTPUT}/${endpoint}.out"
+            $KUBECTL get endpoints $endpoint -o yaml -n $NAMESPACE &>"${K8S_NAMESPACES_ENDPOINT_YAML_OUTPUT}/${endpoint}.out"
             [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_ENDPOINT_YAML_OUTPUT}/${endpoint}.out"
         done <<< "$OUTPUT"
     else
@@ -973,15 +983,15 @@ for NAMESPACE in $NAMESPACE_LIST; do
     fi
 
     #grab job data
-    OUTPUT=`kubectl get jobs -n $NAMESPACE 2>/dev/null`
+    OUTPUT=`$KUBECTL get jobs -n $NAMESPACE 2>/dev/null`
     if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
         echo "$OUTPUT" > "${K8S_NAMESPACES_JOB_DATA}/jobs.out"
         while read line; do
             job=`echo "$line" | cut -d' ' -f1`
-            kubectl describe job $job -n $NAMESPACE &> "${K8S_NAMESPACES_JOB_DESCRIBE_DATA}/${job}.out"
+            $KUBECTL describe job $job -n $NAMESPACE &> "${K8S_NAMESPACES_JOB_DESCRIBE_DATA}/${job}.out"
             [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_JOB_DESCRIBE_DATA}/${job}.out"
 
-            kubectl get job $job -o yaml -n $NAMESPACE &>"${K8S_NAMESPACES_JOB_YAML_OUTPUT}/${job}.out"
+            $KUBECTL get job $job -o yaml -n $NAMESPACE &>"${K8S_NAMESPACES_JOB_YAML_OUTPUT}/${job}.out"
             [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_JOB_YAML_OUTPUT}/${job}.out"
         done <<< "$OUTPUT"
     else
@@ -989,12 +999,12 @@ for NAMESPACE in $NAMESPACE_LIST; do
     fi
 
     #grab pgtasks data
-    OUTPUT=`kubectl get pgtasks -n $NAMESPACE 2>/dev/null`
+    OUTPUT=`$KUBECTL get pgtasks -n $NAMESPACE 2>/dev/null`
     if [[ $? -eq 0 && ${#OUTPUT} -gt 0  ]]; then
         echo "$OUTPUT" > "${K8S_NAMESPACES_PGTASKS_DATA}/pgtasks.out"
         while read line; do
             pgtask=`echo "$line" | cut -d' ' -f1`
-            kubectl describe pgtask $pgtask -n $NAMESPACE &>"${K8S_NAMESPACES_PGTASKS_DESCRIBE_DATA}/${pgtask}.out"
+            $KUBECTL describe pgtask $pgtask -n $NAMESPACE &>"${K8S_NAMESPACES_PGTASKS_DESCRIBE_DATA}/${pgtask}.out"
             [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_PGTASKS_DESCRIBE_DATA}/${pgtask}.out"
         done <<< "$OUTPUT"
     else
@@ -1002,7 +1012,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
     fi
 
     #grab pod data
-    OUTPUT=`kubectl get pods -n $NAMESPACE -o wide 2>/dev/null`
+    OUTPUT=`$KUBECTL get pods -n $NAMESPACE -o wide 2>/dev/null`
     if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
         echo "$OUTPUT" > "${K8S_NAMESPACES_POD_DATA}/pods.out"
         while read line; do
@@ -1145,7 +1155,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
                     esac
 
                     # Following is to fix the case where analytics instance name is truncated.
-                    INSTANCE_LABEL=`kubectl get pod -n $NAMESPACE -o jsonpath='{.metadata.labels.app\.kubernetes\.io\/instance}' $pod 2>/dev/null`
+                    INSTANCE_LABEL=`$KUBECTL get pod -n $NAMESPACE -o jsonpath='{.metadata.labels.app\.kubernetes\.io\/instance}' $pod 2>/dev/null`
                     if [[ $INSTANCE_LABEL == $SUBSYS_ANALYTICS ]]; then
                         SUBFOLDER="analytics"
                         subAnalytics=$SUBSYS_ANALYTICS
@@ -1166,7 +1176,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
 
             #grab ingress configuration
             if [[ $IS_INGRESS -eq 1 ]]; then
-                kubectl cp -n $NAMESPACE "${pod}:/etc/nginx/nginx.conf" "${LOG_TARGET_PATH}/${pod}_nginx-ingress-configuration.out" &>/dev/null
+                $KUBECTL cp -n $NAMESPACE "${pod}:/etc/nginx/nginx.conf" "${LOG_TARGET_PATH}/${pod}_nginx-ingress-configuration.out" &>/dev/null
                 [[ $? -eq 0 && -s "${LOG_TARGET_PATH}/${pod}_nginx-ingress-configuration.out" ]] || rm -f "${LOG_TARGET_PATH}/${pod}_nginx-ingress-configuration.out"
 
                 #reset variable
@@ -1181,42 +1191,42 @@ for NAMESPACE in $NAMESPACE_LIST; do
                 mkdir -p $target_dir
                 mkdir -p $health_dir
 
-                POSTGRES_PGLOGS_NAME=`kubectl exec -n $NAMESPACE ${pod} -- ls -1 /pgdata 2>"/dev/null" | grep -v lost 2>"/dev/null"`
-                POSTGRES_PGWAL_NAME=`kubectl exec -n $NAMESPACE ${pod} -- ls -1 /pgwal 2>"/dev/null" | grep -v lost 2>"/dev/null"`
+                POSTGRES_PGLOGS_NAME=`$KUBECTL exec -n $NAMESPACE ${pod} -- ls -1 /pgdata 2>"/dev/null" | grep -v lost 2>"/dev/null"`
+                POSTGRES_PGWAL_NAME=`$KUBECTL exec -n $NAMESPACE ${pod} -- ls -1 /pgwal 2>"/dev/null" | grep -v lost 2>"/dev/null"`
 
                 #pglogs
-                kubectl cp -n $NAMESPACE "${pod}:/pgdata/${POSTGRES_PGLOGS_NAME}/pglogs" $target_dir &>/dev/null
+                $KUBECTL cp -n $NAMESPACE "${pod}:/pgdata/${POSTGRES_PGLOGS_NAME}/pglogs" $target_dir &>/dev/null
 
                 #df
-                DB_DF_OUTPUT=`kubectl exec -n $NAMESPACE ${pod} -c database -- df -h 2>"/dev/null"`
+                DB_DF_OUTPUT=`$KUBECTL exec -n $NAMESPACE ${pod} -c database -- df -h 2>"/dev/null"`
                 echo "$DB_DF_OUTPUT" > $health_dir/df.out
 
                 #pg wal dir count
-                PG_WAL_DIR_COUNT=`kubectl exec -n $NAMESPACE ${pod} -c database -- ls -lrt /pgwal/${POSTGRES_PGWAL_NAME}/ | wc -l 2>"/dev/null"`
+                PG_WAL_DIR_COUNT=`$KUBECTL exec -n $NAMESPACE ${pod} -c database -- ls -lrt /pgwal/${POSTGRES_PGWAL_NAME}/ | wc -l 2>"/dev/null"`
                 echo "$PG_WAL_DIR_COUNT" > $health_dir/pgwal-dir-count.out
 
                 #pg wal dir history data
-                PG_WAL_HISTORY_LIST=`kubectl exec -n $NAMESPACE ${pod} -c database -- ls -lrt /pgwal/${POSTGRES_PGWAL_NAME}/ | grep history 2>"/dev/null"`
+                PG_WAL_HISTORY_LIST=`$KUBECTL exec -n $NAMESPACE ${pod} -c database -- ls -lrt /pgwal/${POSTGRES_PGWAL_NAME}/ | grep history 2>"/dev/null"`
                 echo "$PG_WAL_HISTORY_LIST" > $health_dir/pgwal-history-list.out
 
                 # pgdata du
-                PG_DATA_DU_OUTPUT=`kubectl exec -n $NAMESPACE ${pod} -c database -- du -sh /pgdata/${POSTGRES_PGLOGS_NAME}/  2>"/dev/null"`
+                PG_DATA_DU_OUTPUT=`$KUBECTL exec -n $NAMESPACE ${pod} -c database -- du -sh /pgdata/${POSTGRES_PGLOGS_NAME}/  2>"/dev/null"`
                 echo "$PG_DATA_DU_OUTPUT" > $health_dir/pgdata-du.out
 
                 # pgdata du base
-                PG_DATA_DU_BASE_OUTPUT=`kubectl exec -n $NAMESPACE ${pod} -c database -- du -sh /pgdata/${POSTGRES_PGLOGS_NAME}/base/  2>"/dev/null"`
+                PG_DATA_DU_BASE_OUTPUT=`$KUBECTL exec -n $NAMESPACE ${pod} -c database -- du -sh /pgdata/${POSTGRES_PGLOGS_NAME}/base/  2>"/dev/null"`
                 echo "$PG_DATA_DU_BASE_OUTPUT" > $health_dir/pgdata-du-base.out
 
                 # pgwal du
-                PG_WAL_DU_OUTPUT=`kubectl exec -n $NAMESPACE ${pod} -c database -- du -sh /pgwal/${POSTGRES_PGWAL_NAME}/  2>"/dev/null"`
+                PG_WAL_DU_OUTPUT=`$KUBECTL exec -n $NAMESPACE ${pod} -c database -- du -sh /pgwal/${POSTGRES_PGWAL_NAME}/  2>"/dev/null"`
                 echo "$PG_WAL_DU_OUTPUT" > $health_dir/pgwal-du.out
 
                 # patroniclt list
-                PATRONICTL_LIST_OUTPUT=`kubectl exec -n $NAMESPACE ${pod} -c database -- patronictl list 2>"/dev/null"`
+                PATRONICTL_LIST_OUTPUT=`$KUBECTL exec -n $NAMESPACE ${pod} -c database -- patronictl list 2>"/dev/null"`
                 echo "$PATRONICTL_LIST_OUTPUT" > $health_dir/patronictl-list.out
 
                 # patroniclt history
-                PATRONICTL_HISTORY_OUTPUT=`kubectl exec -n $NAMESPACE ${pod} -c database -- patronictl history 2>"/dev/null"`
+                PATRONICTL_HISTORY_OUTPUT=`$KUBECTL exec -n $NAMESPACE ${pod} -c database -- patronictl history 2>"/dev/null"`
                 echo "$PATRONICTL_HISTORY_OUTPUT" > $health_dir/patronictl-history.out
 
                 #SQL Commands 
@@ -1234,7 +1244,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
                 for QUERY in "${POSTGRES_QUERIES[@]}"; do 
                     QUERY_RUNNING="${!QUERY}"
                     echo "$QUERY_RUNNING" >> $health_dir/postgres-sql-queries.out
-                    SQL_OUTPUT=`kubectl exec -i ${pod} -- psql -c "$QUERY_RUNNING" 2>"/dev/null"` 
+                    SQL_OUTPUT=`$KUBECTL exec -i ${pod} -- psql -c "$QUERY_RUNNING" 2>"/dev/null"` 
                     echo -e "$SQL_OUTPUT\n" >> $health_dir/postgres-sql-queries.out
                 done
 
@@ -1243,7 +1253,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
                 for QUERY in "${APIM_QUERIES[@]}"; do 
                     QUERY_RUNNING="${!QUERY}"
                     echo "$QUERY_RUNNING" >> $health_dir/apim-sql-queries.out
-                    SQL_OUTPUT=`kubectl exec -i ${pod} -- psql -d apim -c "$QUERY_RUNNING" 2>"/dev/null"` 
+                    SQL_OUTPUT=`$KUBECTL exec -i ${pod} -- psql -d apim -c "$QUERY_RUNNING" 2>"/dev/null"` 
                     echo -e "$SQL_OUTPUT\n" >> $health_dir/apim-sql-queries.out
                 done
 
@@ -1252,7 +1262,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
                 for QUERY in "${LUR_QUERIES[@]}"; do 
                     QUERY_RUNNING="${!QUERY}"
                     echo "$QUERY_RUNNING" >> $health_dir/lur-sql-queries.out
-                    SQL_OUTPUT=`kubectl exec -i ${pod} -- psql -d lur -c "$QUERY_RUNNING" 2>"/dev/null"` 
+                    SQL_OUTPUT=`$KUBECTL exec -i ${pod} -- psql -d lur -c "$QUERY_RUNNING" 2>"/dev/null"` 
                     echo -e "$SQL_OUTPUT\n" >> $health_dir/lur-sql-queries.out
                 done
 
@@ -1264,14 +1274,14 @@ for NAMESPACE in $NAMESPACE_LIST; do
                 mkdir -p $GATEWAY_DIAGNOSTIC_DATA
 
                 #grab all "gwd-log.log" files
-                GWD_FILE_LIST=`kubectl exec -n $NAMESPACE ${pod} -- find /opt/ibm/datapower/drouter/temporary/log/apiconnect/ -name "gwd-log.log*"`
+                GWD_FILE_LIST=`$KUBECTL exec -n $NAMESPACE ${pod} -- find /opt/ibm/datapower/drouter/temporary/log/apiconnect/ -name "gwd-log.log*"`
                 echo "${GWD_FILE_LIST}" | while read fullpath; do
                     filename=$(basename $fullpath)
-                    kubectl cp -n $NAMESPACE ${pod}:${fullpath} "${GATEWAY_DIAGNOSTIC_DATA}/${filename}" &>/dev/null
+                    $KUBECTL cp -n $NAMESPACE ${pod}:${fullpath} "${GATEWAY_DIAGNOSTIC_DATA}/${filename}" &>/dev/null
                 done
 
                 #open SOMA port to localhost
-                kubectl port-forward ${pod} 5550:5550 -n ${NAMESPACE} 1>/dev/null 2>/dev/null &
+                $KUBECTL port-forward ${pod} 5550:5550 -n ${NAMESPACE} 1>/dev/null 2>/dev/null &
                 pid=$!
                 #necessary to wait for port-forward to start
                 sleep 1
@@ -1282,9 +1292,9 @@ for NAMESPACE in $NAMESPACE_LIST; do
 
                 #POST XML to gateway, start error report creation
                 admin_password="admin"
-                secret_name=`kubectl get secrets -n $NAMESPACE | egrep 'admin-secret|gw-admin' | awk '{print $1}'`
+                secret_name=`$KUBECTL get secrets -n $NAMESPACE | egrep 'admin-secret|gw-admin' | awk '{print $1}'`
                 if [[ ${#secret_name} -gt 0 ]]; then
-                    admin_password=`kubectl get secret $secret_name -o jsonpath='{.data.password}' | base64 -d`
+                    admin_password=`$KUBECTL get secret $secret_name -o jsonpath='{.data.password}' | base64 -d`
                 fi
 
                 response=`curl -k -X POST --write-out %{http_code} --silent --output /dev/null \
@@ -1301,7 +1311,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
                     sleep $ERROR_REPORT_SLEEP_TIMEOUT
 
                     #this will give a link that points to the target error report
-                    kubectl cp -n $NAMESPACE "${pod}:/opt/ibm/datapower/drouter/temporary/error-report.txt.gz" "${GATEWAY_DIAGNOSTIC_DATA}/error-report.txt.gz" 1>/dev/null 2>"${GATEWAY_DIAGNOSTIC_DATA}/output.error"
+                    $KUBECTL cp -n $NAMESPACE "${pod}:/opt/ibm/datapower/drouter/temporary/error-report.txt.gz" "${GATEWAY_DIAGNOSTIC_DATA}/error-report.txt.gz" 1>/dev/null 2>"${GATEWAY_DIAGNOSTIC_DATA}/output.error"
 
                     #check error output for path to actual error report
                     REPORT_PATH=`cat "${GATEWAY_DIAGNOSTIC_DATA}/output.error" | awk -F'"' '{print $4}'`
@@ -1312,7 +1322,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
                             REPORT_NAME=$(basename $REPORT_PATH)
 
                             #grab error report
-                            kubectl cp -n $NAMESPACE "${pod}:${REPORT_PATH}" "${GATEWAY_DIAGNOSTIC_DATA}/${REPORT_NAME}" &>/dev/null
+                            $KUBECTL cp -n $NAMESPACE "${pod}:${REPORT_PATH}" "${GATEWAY_DIAGNOSTIC_DATA}/${REPORT_NAME}" &>/dev/null
                         fi
 
                         #remove link
@@ -1322,7 +1332,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
                         REPORT_NAME=$(basename $REPORT_PATH)
 
                         #grab error report
-                        kubectl cp -n $NAMESPACE "${pod}:${REPORT_PATH}" "${GATEWAY_DIAGNOSTIC_DATA}/${REPORT_NAME}" &>/dev/null
+                        $KUBECTL cp -n $NAMESPACE "${pod}:${REPORT_PATH}" "${GATEWAY_DIAGNOSTIC_DATA}/${REPORT_NAME}" &>/dev/null
 
                         #clean up
                         rm -f "${GATEWAY_DIAGNOSTIC_DATA}/output.error"
@@ -1348,34 +1358,34 @@ for NAMESPACE in $NAMESPACE_LIST; do
                 mkdir -p $ANALYTICS_DIAGNOSTIC_DATA
 
                 if [[ "$pod" == *"storage-"* ]]; then
-                    OUTPUT1=`kubectl exec -n $NAMESPACE $pod -- curl -ks --cert /etc/velox/certs/client/tls.crt --key /etc/velox/certs/client/tls.key "https://localhost:9200/_cluster/health?pretty"`
+                    OUTPUT1=`$KUBECTL exec -n $NAMESPACE $pod -- curl -ks --cert /etc/velox/certs/client/tls.crt --key /etc/velox/certs/client/tls.key "https://localhost:9200/_cluster/health?pretty"`
                     echo "$OUTPUT1" >"${ANALYTICS_DIAGNOSTIC_DATA}/curl-cluster_health.out"
-                    OUTPUT1=`kubectl exec -n $NAMESPACE $pod -- curl -ks --cert /etc/velox/certs/client/tls.crt --key /etc/velox/certs/client/tls.key "https://localhost:9200/_cat/nodes?v"`
+                    OUTPUT1=`$KUBECTL exec -n $NAMESPACE $pod -- curl -ks --cert /etc/velox/certs/client/tls.crt --key /etc/velox/certs/client/tls.key "https://localhost:9200/_cat/nodes?v"`
                     echo "$OUTPUT1" >"${ANALYTICS_DIAGNOSTIC_DATA}/curl-cat_nodes.out"
-                    OUTPUT1=`kubectl exec -n $NAMESPACE $pod -- curl -ks --cert /etc/velox/certs/client/tls.crt --key /etc/velox/certs/client/tls.key "https://localhost:9200/_cat/indices?v"`
+                    OUTPUT1=`$KUBECTL exec -n $NAMESPACE $pod -- curl -ks --cert /etc/velox/certs/client/tls.crt --key /etc/velox/certs/client/tls.key "https://localhost:9200/_cat/indices?v"`
                     echo "$OUTPUT1" >"${ANALYTICS_DIAGNOSTIC_DATA}/curl-cat_indices.out"
-                    OUTPUT1=`kubectl exec -n $NAMESPACE $pod -- curl -ks --cert /etc/velox/certs/client/tls.crt --key /etc/velox/certs/client/tls.key "https://localhost:9200/_cat/shards?v"`
+                    OUTPUT1=`$KUBECTL exec -n $NAMESPACE $pod -- curl -ks --cert /etc/velox/certs/client/tls.crt --key /etc/velox/certs/client/tls.key "https://localhost:9200/_cat/shards?v"`
                     echo "$OUTPUT1" >"${ANALYTICS_DIAGNOSTIC_DATA}/curl-cat_shards.out"
-                    OUTPUT1=`kubectl exec -n $NAMESPACE $pod -- curl -ks --cert /etc/velox/certs/client/tls.crt --key /etc/velox/certs/client/tls.key "https://localhost:9200/_alias?pretty"`
+                    OUTPUT1=`$KUBECTL exec -n $NAMESPACE $pod -- curl -ks --cert /etc/velox/certs/client/tls.crt --key /etc/velox/certs/client/tls.key "https://localhost:9200/_alias?pretty"`
                     echo "$OUTPUT1" >"${ANALYTICS_DIAGNOSTIC_DATA}/curl-alias.out"
-                    OUTPUT1=`kubectl exec -n $NAMESPACE $pod -- curl -ks --cert /etc/velox/certs/client/tls.crt --key /etc/velox/certs/client/tls.key "https://localhost:9200/_cluster/allocation/explain?pretty"`
+                    OUTPUT1=`$KUBECTL exec -n $NAMESPACE $pod -- curl -ks --cert /etc/velox/certs/client/tls.crt --key /etc/velox/certs/client/tls.key "https://localhost:9200/_cluster/allocation/explain?pretty"`
                     echo "$OUTPUT1" >"${ANALYTICS_DIAGNOSTIC_DATA}/curl-cluster_allocation_explain.out"
                 elif [[ "$pod" == *"ingestion"* ]]; then
-                    OUTPUT1=`kubectl exec -n $NAMESPACE $pod -- curl -s "localhost:9600/_node/stats?pretty"`
+                    OUTPUT1=`$KUBECTL exec -n $NAMESPACE $pod -- curl -s "localhost:9600/_node/stats?pretty"`
                     echo "$OUTPUT1" >"${ANALYTICS_DIAGNOSTIC_DATA}/curl-node_stats.out"
                 fi
             fi
 
             #write out pod descriptions
-            kubectl describe pod -n $NAMESPACE $pod &> "${DESCRIBE_TARGET_PATH}/${pod}.out"
+            $KUBECTL describe pod -n $NAMESPACE $pod &> "${DESCRIBE_TARGET_PATH}/${pod}.out"
             [ $? -eq 0 ] || rm -f "${DESCRIBE_TARGET_PATH}/${pod}.out"
 
             #write out logs
-            for container in `kubectl get pod -n $NAMESPACE $pod -o jsonpath="{.spec.containers[*].name}" 2>/dev/null`; do
-                kubectl logs -n $NAMESPACE $pod -c $container $LOG_LIMIT &> "${LOG_TARGET_PATH}/${pod}_${container}.log"
+            for container in `$KUBECTL get pod -n $NAMESPACE $pod -o jsonpath="{.spec.containers[*].name}" 2>/dev/null`; do
+                $KUBECTL logs -n $NAMESPACE $pod -c $container $LOG_LIMIT &> "${LOG_TARGET_PATH}/${pod}_${container}.log"
                 [[ $? -eq 0 && -s "${LOG_TARGET_PATH}/${pod}_${container}.log" ]] || rm -f "${LOG_TARGET_PATH}/${pod}_${container}.log"
 
-                kubectl logs --previous -n $NAMESPACE $pod -c $container $LOG_LIMIT &> "${LOG_TARGET_PATH}/${pod}_${container}_previous.log"
+                $KUBECTL logs --previous -n $NAMESPACE $pod -c $container $LOG_LIMIT &> "${LOG_TARGET_PATH}/${pod}_${container}_previous.log"
                 [[ $? -eq 0 && -s "${LOG_TARGET_PATH}/${pod}_${container}_previous.log" ]] || rm -f "${LOG_TARGET_PATH}/${pod}_${container}_previous.log"
 
                 #grab portal data
@@ -1387,19 +1397,19 @@ for NAMESPACE in $NAMESPACE_LIST; do
                         case $container in
                             "admin")
                                 mkdir -p $PORTAL_DIAGNOSTIC_DATA
-                                OUTPUT1=`kubectl exec -n $NAMESPACE -c $container $pod -- bash -ic "/opt/ibm/bin/list_sites -p" 2>"/dev/null"`
+                                OUTPUT1=`$KUBECTL exec -n $NAMESPACE -c $container $pod -- bash -ic "/opt/ibm/bin/list_sites -p" 2>"/dev/null"`
                                 echo "$OUTPUT1" >"${PORTAL_DIAGNOSTIC_DATA}/list_sites-platform.out"
-                                OUTPUT1=`kubectl exec -n $NAMESPACE -c $container $pod -- bash -ic "/opt/ibm/bin/list_sites -d" 2>"/dev/null"`
+                                OUTPUT1=`$KUBECTL exec -n $NAMESPACE -c $container $pod -- bash -ic "/opt/ibm/bin/list_sites -d" 2>"/dev/null"`
                                 echo "$OUTPUT1" >"${PORTAL_DIAGNOSTIC_DATA}/list_sites-database.out"
-                                OUTPUT1=`kubectl exec -n $NAMESPACE -c $container $pod -- bash -ic "/opt/ibm/bin/list_platforms" 2>"/dev/null"`
+                                OUTPUT1=`$KUBECTL exec -n $NAMESPACE -c $container $pod -- bash -ic "/opt/ibm/bin/list_platforms" 2>"/dev/null"`
                                 echo "$OUTPUT1" >"${PORTAL_DIAGNOSTIC_DATA}/list_platforms.out"
-                                OUTPUT1=`kubectl exec -n $NAMESPACE -c $container $pod -- bash -ic "ls -lRAi --author --full-time" 2>"/dev/null"`
+                                OUTPUT1=`$KUBECTL exec -n $NAMESPACE -c $container $pod -- bash -ic "ls -lRAi --author --full-time" 2>"/dev/null"`
                                 echo "$OUTPUT1" >"${PORTAL_DIAGNOSTIC_DATA}/listing-all.out"
-                                OUTPUT1=`kubectl exec -n $NAMESPACE -c $container $pod -- bash -ic "/opt/ibm/bin/status -u" 2>"/dev/null"`
+                                OUTPUT1=`$KUBECTL exec -n $NAMESPACE -c $container $pod -- bash -ic "/opt/ibm/bin/status -u" 2>"/dev/null"`
                                 echo "$OUTPUT1" >"${PORTAL_DIAGNOSTIC_DATA}/status.out"
-                                OUTPUT1=`kubectl exec -n $NAMESPACE -c $container $pod -- bash -ic "ps -efHww --sort=-pcpu" 2>"/dev/null"`
+                                OUTPUT1=`$KUBECTL exec -n $NAMESPACE -c $container $pod -- bash -ic "ps -efHww --sort=-pcpu" 2>"/dev/null"`
                                 echo "$OUTPUT1" >"${PORTAL_DIAGNOSTIC_DATA}/ps-cpu.out"
-                                OUTPUT1=`kubectl exec -n $NAMESPACE -c $container $pod -- bash -ic "ps -efHww --sort=-rss | head -26" 2>"/dev/null"`
+                                OUTPUT1=`$KUBECTL exec -n $NAMESPACE -c $container $pod -- bash -ic "ps -efHww --sort=-rss | head -26" 2>"/dev/null"`
                                 echo "$OUTPUT1" >"${PORTAL_DIAGNOSTIC_DATA}/ps-rss.out"
                                 ;;
                             "web")
@@ -1413,13 +1423,13 @@ for NAMESPACE in $NAMESPACE_LIST; do
                         case $container in
                             "db")
                                 mkdir -p $PORTAL_DIAGNOSTIC_DATA
-                                OUTPUT1=`kubectl exec -n $NAMESPACE -c $container $pod -- bash -ic "mysqldump portal" 2>"/dev/null"`
+                                OUTPUT1=`$KUBECTL exec -n $NAMESPACE -c $container $pod -- bash -ic "mysqldump portal" 2>"/dev/null"`
                                 echo "$OUTPUT1" >"${PORTAL_DIAGNOSTIC_DATA}/portal.dump"
-                                OUTPUT1=`kubectl exec -n $NAMESPACE -c $container $pod -- bash -ic "ls -lRAi --author --full-time" 2>"/dev/null"`
+                                OUTPUT1=`$KUBECTL exec -n $NAMESPACE -c $container $pod -- bash -ic "ls -lRAi --author --full-time" 2>"/dev/null"`
                                 echo "$OUTPUT1" >"${PORTAL_DIAGNOSTIC_DATA}/listing-all.out"
-                                OUTPUT1=`kubectl exec -n $NAMESPACE -c $container $pod -- bash -ic "ps -efHww --sort=-pcpu" 2>"/dev/null"`
+                                OUTPUT1=`$KUBECTL exec -n $NAMESPACE -c $container $pod -- bash -ic "ps -efHww --sort=-pcpu" 2>"/dev/null"`
                                 echo "$OUTPUT1" >"${PORTAL_DIAGNOSTIC_DATA}/ps-cpu.out"
-                                OUTPUT1=`kubectl exec -n $NAMESPACE -c $container $pod -- bash -ic "ps -efHww --sort=-rss | head -26" 2>"/dev/null"`
+                                OUTPUT1=`$KUBECTL exec -n $NAMESPACE -c $container $pod -- bash -ic "ps -efHww --sort=-rss | head -26" 2>"/dev/null"`
                                 echo "$OUTPUT1" >"${PORTAL_DIAGNOSTIC_DATA}/ps-rss.out"
                                 ;;
                             "dbproxy")
@@ -1433,7 +1443,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
 
         #grab metric data
         if [[ $OUTPUT_METRICS -eq 0 ]]; then
-            kubectl top pods -n $NAMESPACE &> "${K8S_NAMESPACES_POD_DATA}/top.out"
+            $KUBECTL top pods -n $NAMESPACE &> "${K8S_NAMESPACES_POD_DATA}/top.out"
             [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_POD_DATA}/top.out"
         fi
     else
@@ -1441,12 +1451,12 @@ for NAMESPACE in $NAMESPACE_LIST; do
     fi
 
     #grab pvc data
-    OUTPUT=`kubectl get pvc -n $NAMESPACE 2>/dev/null`
+    OUTPUT=`$KUBECTL get pvc -n $NAMESPACE 2>/dev/null`
     if [[ $? -eq 0 && ${#OUTPUT} -gt 0  ]]; then
         echo "$OUTPUT" > "${K8S_NAMESPACES_PVC_DATA}/pvc.out"
         while read line; do
             pvc=`echo "$line" | cut -d' ' -f1`
-            kubectl describe pvc $pvc -n $NAMESPACE &>"${K8S_NAMESPACES_PVC_DESCRIBE_DATA}/${pvc}.out"
+            $KUBECTL describe pvc $pvc -n $NAMESPACE &>"${K8S_NAMESPACES_PVC_DESCRIBE_DATA}/${pvc}.out"
             [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_PVC_DESCRIBE_DATA}/${pvc}.out"
         done <<< "$OUTPUT"
     else
@@ -1454,15 +1464,15 @@ for NAMESPACE in $NAMESPACE_LIST; do
     fi
 
     #grab replicaset data
-    OUTPUT=`kubectl get replicaset -n $NAMESPACE 2>/dev/null`
+    OUTPUT=`$KUBECTL get replicaset -n $NAMESPACE 2>/dev/null`
     if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
         echo "$OUTPUT" > "${K8S_NAMESPACES_REPLICASET_DATA}/replicaset.out"
         while read line; do
             rs=`echo "$line" | cut -d' ' -f1`
-            kubectl describe replicaset $rs -n $NAMESPACE &>"${K8S_NAMESPACES_REPLICASET_DESCRIBE_DATA}/${rs}.out"
+            $KUBECTL describe replicaset $rs -n $NAMESPACE &>"${K8S_NAMESPACES_REPLICASET_DESCRIBE_DATA}/${rs}.out"
             [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_REPLICASET_DESCRIBE_DATA}/${rs}.out"
 
-            kubectl get replicaset $rs -o yaml -n $NAMESPACE &>"${K8S_NAMESPACES_REPLICASET_YAML_OUTPUT}/${rs}.out"
+            $KUBECTL get replicaset $rs -o yaml -n $NAMESPACE &>"${K8S_NAMESPACES_REPLICASET_YAML_OUTPUT}/${rs}.out"
             [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_REPLICASET_YAML_OUTPUT}/${rs}.out"
         done <<< "$OUTPUT"
     else
@@ -1470,12 +1480,12 @@ for NAMESPACE in $NAMESPACE_LIST; do
     fi
 
     #grab role data
-    OUTPUT=`kubectl get roles -n $NAMESPACE 2>/dev/null`
+    OUTPUT=`$KUBECTL get roles -n $NAMESPACE 2>/dev/null`
     if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
         echo "$OUTPUT" > "${K8S_NAMESPACES_ROLE_DATA}/roles.out"
         while read line; do
             role=`echo "$line" | cut -d' ' -f1`
-            kubectl describe role $role -n $NAMESPACE &> "${K8S_NAMESPACES_ROLE_DESCRIBE_DATA}/${role}.out"
+            $KUBECTL describe role $role -n $NAMESPACE &> "${K8S_NAMESPACES_ROLE_DESCRIBE_DATA}/${role}.out"
             [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_ROLE_DESCRIBE_DATA}/${role}.out"
         done <<< "$OUTPUT"
     else
@@ -1483,12 +1493,12 @@ for NAMESPACE in $NAMESPACE_LIST; do
     fi
 
     #grab rolebinding data
-    OUTPUT=`kubectl get rolebindings -n $NAMESPACE 2>/dev/null`
+    OUTPUT=`$KUBECTL get rolebindings -n $NAMESPACE 2>/dev/null`
     if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
         echo "$OUTPUT" > "${K8S_NAMESPACES_ROLEBINDING_DATA}/rolebindings.out"
         while read line; do
             rolebinding=`echo "$line" | cut -d' ' -f1`
-            kubectl describe rolebinding $rolebinding -n $NAMESPACE &> "${K8S_NAMESPACES_ROLEBINDING_DESCRIBE_DATA}/${rolebinding}.out"
+            $KUBECTL describe rolebinding $rolebinding -n $NAMESPACE &> "${K8S_NAMESPACES_ROLEBINDING_DESCRIBE_DATA}/${rolebinding}.out"
             [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_ROLEBINDING_DESCRIBE_DATA}/${rolebinding}.out"
         done <<< "$OUTPUT"
     else
@@ -1496,12 +1506,12 @@ for NAMESPACE in $NAMESPACE_LIST; do
     fi
 
     #grab role service account data
-    OUTPUT=`kubectl get sa -n $NAMESPACE 2>/dev/null`
+    OUTPUT=`$KUBECTL get sa -n $NAMESPACE 2>/dev/null`
     if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
         echo "$OUTPUT" > "${K8S_NAMESPACES_SA_DATA}/sa.out"
         while read line; do
             sa=`echo "$line" | cut -d' ' -f1`
-            kubectl describe sa $sa -n $NAMESPACE &> "${K8S_NAMESPACES_SA_DESCRIBE_DATA}/${sa}.out"
+            $KUBECTL describe sa $sa -n $NAMESPACE &> "${K8S_NAMESPACES_SA_DESCRIBE_DATA}/${sa}.out"
             [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_SA_DESCRIBE_DATA}/${sa}.out"
         done <<< "$OUTPUT"
     else
@@ -1509,25 +1519,25 @@ for NAMESPACE in $NAMESPACE_LIST; do
     fi
 
     #list all secrets
-    OUTPUT=`kubectl get secrets -n $NAMESPACE 2>/dev/null`
+    OUTPUT=`$KUBECTL get secrets -n $NAMESPACE 2>/dev/null`
     if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
         echo "$OUTPUT" > "${K8S_NAMESPACES_SECRET_DATA}/secrets.out"
 
         #grab tls secrets and only the ca.crt and tls.crt fields, unless COLLECT_PRIVATE_KEYS is set
-        OUTPUT=`kubectl get secrets -n $NAMESPACE --field-selector type=kubernetes.io/tls 2>/dev/null`
+        OUTPUT=`$KUBECTL get secrets -n $NAMESPACE --field-selector type=kubernetes.io/tls 2>/dev/null`
         if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
             while read line; do
                 secret=`echo "$line" | cut -d' ' -f1`
 
                 # We can always describe the secret as there is no security exposure here
-                kubectl describe secret $secret -n $NAMESPACE &>"${K8S_NAMESPACES_SECRET_DESCRIBE_DATA}/${secret}.out"
+                $KUBECTL describe secret $secret -n $NAMESPACE &>"${K8S_NAMESPACES_SECRET_DESCRIBE_DATA}/${secret}.out"
 
                 if [[ "$COLLECT_PRIVATE_KEYS" -eq 1 ]]; then
                     # Get entire secret
-                    kubectl get secret $secret -n $NAMESPACE -o yaml &>"${K8S_NAMESPACES_SECRET_YAML_OUTPUT}/${secret}.yaml"
+                    $KUBECTL get secret $secret -n $NAMESPACE -o yaml &>"${K8S_NAMESPACES_SECRET_YAML_OUTPUT}/${secret}.yaml"
                 else
                     # Get only type, name, namespace, data["tls.crt"] and data["ca.crt"] fields
-                    kubectl get secret $secret -n $NAMESPACE -o jsonpath='type: {.type}{"\n"}metadata:{"\n"}  name: {.metadata.name}{"\n"}  namespace: {.metadata.namespace}{"\n"}data:{"\n"}  ca.crt: {.data.ca\.crt}{"\n"}  tls.crt: {.data.tls\.crt}{"\n"}' &>"${K8S_NAMESPACES_SECRET_YAML_OUTPUT}/${secret}.yaml"
+                    $KUBECTL get secret $secret -n $NAMESPACE -o jsonpath='type: {.type}{"\n"}metadata:{"\n"}  name: {.metadata.name}{"\n"}  namespace: {.metadata.namespace}{"\n"}data:{"\n"}  ca.crt: {.data.ca\.crt}{"\n"}  tls.crt: {.data.tls\.crt}{"\n"}' &>"${K8S_NAMESPACES_SECRET_YAML_OUTPUT}/${secret}.yaml"
                 fi
                 [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_SECRET_YAML_OUTPUT}/${secret}.yaml"
             done <<< "$OUTPUT"
@@ -1537,16 +1547,16 @@ for NAMESPACE in $NAMESPACE_LIST; do
     fi
 
     #grab service data
-    OUTPUT=`kubectl get svc -n $NAMESPACE 2>/dev/null`
+    OUTPUT=`$KUBECTL get svc -n $NAMESPACE 2>/dev/null`
     if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
         echo "$OUTPUT" > "${K8S_NAMESPACES_SERVICE_DATA}/services.out"
         while read line; do
             svc=`echo "$line" | cut -d' ' -f1`
 
-            kubectl describe svc $svc -n $NAMESPACE &>"${K8S_NAMESPACES_SERVICE_DESCRIBE_DATA}/${svc}.out"
+            $KUBECTL describe svc $svc -n $NAMESPACE &>"${K8S_NAMESPACES_SERVICE_DESCRIBE_DATA}/${svc}.out"
             [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_SERVICE_DESCRIBE_DATA}/${svc}.out"
 
-            kubectl get svc $svc -o yaml -n $NAMESPACE &>"${K8S_NAMESPACES_SERVICE_YAML_OUTPUT}/${svc}.yaml"
+            $KUBECTL get svc $svc -o yaml -n $NAMESPACE &>"${K8S_NAMESPACES_SERVICE_YAML_OUTPUT}/${svc}.yaml"
             [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_SERVICE_YAML_OUTPUT}/${svc}.yaml"
         done <<< "$OUTPUT"
     else
@@ -1554,12 +1564,12 @@ for NAMESPACE in $NAMESPACE_LIST; do
     fi
 
     #grab statefulset data
-    OUTPUT=`kubectl get sts -n $NAMESPACE 2>/dev/null`
+    OUTPUT=`$KUBECTL get sts -n $NAMESPACE 2>/dev/null`
     if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
         echo "$OUTPUT" > "${K8S_NAMESPACES_STS_DATA}/statefulset.out"
         while read line; do
             sts=`echo "$line" | cut -d' ' -f1`
-            kubectl describe sts $sts -n $NAMESPACE &> "${K8S_NAMESPACES_STS_DESCRIBE_DATA}/${sts}.out"
+            $KUBECTL describe sts $sts -n $NAMESPACE &> "${K8S_NAMESPACES_STS_DESCRIBE_DATA}/${sts}.out"
             [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_STS_DESCRIBE_DATA}/${sts}.out"
         done <<< "$OUTPUT"
     else
@@ -1638,45 +1648,45 @@ for NAMESPACE in $NAMESPACE_LIST; do
         mkdir -p $ICS_CLUSTER_SERVICE_VERSION_DESCRIBE_DATA
         mkdir -p $ICS_CLUSTER_SERVICE_VERSION_YAML_OUTPUT
 
-        OUTPUT=`kubectl get InstallPlan -n $NAMESPACE 2>/dev/null`
+        OUTPUT=`$KUBECTL get InstallPlan -n $NAMESPACE 2>/dev/null`
         if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
             echo "$OUTPUT" > "${ICS_INSTALL_PLAN_DATA}/install_plans.out"
             while read line; do
                 ip=`echo "$line" | cut -d' ' -f1`
-                kubectl describe InstallPlan $ip -n $NAMESPACE &>"${ICS_INSTALL_PLAN_DESCRIBE_DATA}/${ip}.out"
+                $KUBECTL describe InstallPlan $ip -n $NAMESPACE &>"${ICS_INSTALL_PLAN_DESCRIBE_DATA}/${ip}.out"
                 [ $? -eq 0 ] || rm -f "${ICS_INSTALL_PLAN_DESCRIBE_DATA}/${ip}.out"
 
-                kubectl get InstallPlan $ip -o yaml -n $NAMESPACE &>"${ICS_INSTALL_PLAN_YAML_OUTPUT}/${ip}.out"
+                $KUBECTL get InstallPlan $ip -o yaml -n $NAMESPACE &>"${ICS_INSTALL_PLAN_YAML_OUTPUT}/${ip}.out"
                 [ $? -eq 0 ] || rm -f "${ICS_INSTALL_PLAN_YAML_OUTPUT}/${ip}.out"
             done <<< "$OUTPUT"
         else
             rm -fr $ICS_INSTALL_PLAN_DATA
         fi
 
-        OUTPUT=`kubectl get Subscription -n $NAMESPACE 2>/dev/null`
+        OUTPUT=`$KUBECTL get Subscription -n $NAMESPACE 2>/dev/null`
         if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
             echo "$OUTPUT" > "${ICS_SUBSCRIPTION_DATA}/subscriptions.out"
             while read line; do
                 sub=`echo "$line" | cut -d' ' -f1`
-                kubectl describe Subscription $sub -n $NAMESPACE &>"${ICS_SUBSCRIPTION_DESCRIBE_DATA}/${sub}.out"
+                $KUBECTL describe Subscription $sub -n $NAMESPACE &>"${ICS_SUBSCRIPTION_DESCRIBE_DATA}/${sub}.out"
                 [ $? -eq 0 ] || rm -f "${ICS_SUBSCRIPTION_DESCRIBE_DATA}/${sub}.out"
 
-                kubectl get Subscription $sub -o yaml -n $NAMESPACE &>"${ICS_SUBSCRIPTION_YAML_OUTPUT}/${sub}.out"
+                $KUBECTL get Subscription $sub -o yaml -n $NAMESPACE &>"${ICS_SUBSCRIPTION_YAML_OUTPUT}/${sub}.out"
                 [ $? -eq 0 ] || rm -f "${ICS_SUBSCRIPTION_YAML_OUTPUT}/${sub}.out"
             done <<< "$OUTPUT"
         else
             rm -fr $ICS_INSTALL_PLAN_DATA
         fi
 
-        OUTPUT=`kubectl get ClusterServiceVersion -n $NAMESPACE 2>/dev/null`
+        OUTPUT=`$KUBECTL get ClusterServiceVersion -n $NAMESPACE 2>/dev/null`
         if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
             echo "$OUTPUT" > "${ICS_CLUSTER_SERVICE_VERSION_DATA}/cluster_service_version.out"
             while read line; do
                 csv=`echo "$line" | cut -d' ' -f1`
-                kubectl describe ClusterServiceVersion $csv -n $NAMESPACE &>"${ICS_CLUSTER_SERVICE_VERSION_DESCRIBE_DATA}/${csv}.out"
+                $KUBECTL describe ClusterServiceVersion $csv -n $NAMESPACE &>"${ICS_CLUSTER_SERVICE_VERSION_DESCRIBE_DATA}/${csv}.out"
                 [ $? -eq 0 ] || rm -f "${ICS_CLUSTER_SERVICE_VERSION_DESCRIBE_DATA}/${csv}.out"
 
-                kubectl get ClusterServiceVersion $csv -o yaml -n $NAMESPACE &>"${ICS_CLUSTER_SERVICE_VERSION_YAML_OUTPUT}/${csv}.out"
+                $KUBECTL get ClusterServiceVersion $csv -o yaml -n $NAMESPACE &>"${ICS_CLUSTER_SERVICE_VERSION_YAML_OUTPUT}/${csv}.out"
                 [ $? -eq 0 ] || rm -f "${ICS_CLUSTER_SERVICE_VERSION_YAML_OUTPUT}/${csv}.out"
             done <<< "$OUTPUT"
         else
