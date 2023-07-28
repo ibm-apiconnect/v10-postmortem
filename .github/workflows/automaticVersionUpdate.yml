@@ -14,7 +14,11 @@ jobs:
           input="./generate_postmortem.sh"
           COMM=`git rev-parse HEAD`
           CURRENTCOMMIT="PMCOMMIT='$COMM'"
+          CURRENTDATEOFCOMMIT="PMCOMMITDATE='`date -u`'"
+          OLDVERSION=`grep "NUMERICALVERSION=" ${GITHUB_WORKSPACE}/generate_postmortem.sh | cut -d'=' -f2`
+          sed -i -e "s|NUMERICALVERSION=.*|NUMERICALVERSION=$((OLDVERSION+1))|g" ${GITHUB_WORKSPACE}/generate_postmortem.sh
           sed -i -e "s|PMCOMMIT=.*|$CURRENTCOMMIT|g" ${GITHUB_WORKSPACE}/generate_postmortem.sh
+          sed -i -e "s|PMCOMMITDATE=.*|$CURRENTDATEOFCOMMIT|g" ${GITHUB_WORKSPACE}/generate_postmortem.sh
           git config --global user.name "actionbot"
           git config --global user.email "githubactions" 
           git commit -a -m "Automatic update of version"
