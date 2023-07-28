@@ -15,7 +15,7 @@ PMCOMMIT='e1443c264252c1461744fd2e2d1c09bc414840a4'
 PMCOMMITURL="https://github.com/ibm-apiconnect/v10-postmortem/blob/$PMCOMMIT/generate_postmortem.sh"
 print_postmortem_version(){
     echo "Postmortem Version: $NUMERICALVERSION, Date: $PMCOMMITDATE, URL: $PMCOMMITURL"
- }
+}
 
 #Confirm whether oc or kubectl exists and choose which command tool to use based on that
 which oc &> /dev/null
