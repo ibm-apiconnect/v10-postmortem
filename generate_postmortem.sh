@@ -12,10 +12,12 @@
 PMCOMMIT='2dd0cdbf54c3d7642bb3f3f101a983d36e70ee2c'
 PMCOMMITURL="https://github.com/ibm-apiconnect/v10-postmortem/blob/$PMCOMMIT/generate_postmortem.sh"
 
-if oc api-resources | grep -q "route.openshift.io/v1"; then 
+KUBECTL="kubectl"
+
+#Checking to see if oc is an option
+which oc &> /dev/null
+if [[ $? -eq 0 ]]; then
     KUBECTL="oc"
-else
-    KUBECTL="kubectl"
 fi
 
 
