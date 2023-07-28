@@ -156,9 +156,7 @@ for switch in $@; do
             chmod +x $SCRIPT_LOCATION
             ;;
         *"--version"*)
-            echo "Version Number: $NUMERICALVERSION"
-            echo "Version Date: $PMCOMMITDATE"
-            echo "Postmortem Version: $PMCOMMITURL"
+            echo "Postmortem Version: $NUMERICALVERSION, Date: $PMCOMMITDATE, URL $PMCOMMITURL"
             exit 0
             ;;
         *)
@@ -170,9 +168,7 @@ for switch in $@; do
 done
 
 #Printing Postmortem Version
-echo "Version Number: $NUMERICALVERSION"
-echo "Version Date: $PMCOMMITDATE"
-echo "Postmortem Version: $PMCOMMITURL"
+echo "Postmortem Version: $NUMERICALVERSION, Date: $PMCOMMITDATE, URL $PMCOMMITURL"
 
 if [[ -z "$LOG_LIMIT" ]]; then
     LOG_LIMIT=""
@@ -500,9 +496,7 @@ mkdir -p $K8S_CLUSTER_MUTATINGWEBHOOK_YAML_OUTPUT
 $KUBECTL version 1>"${K8S_VERSION}/$KUBECTL.version" 2>/dev/null
 
 #grab postmortem version 
-echo "Version Number: $NUMERICALVERSION" 1>>"${K8S_VERSION}/postmortem.version" 2>/dev/null
-echo "Version Date: $PMCOMMITDATE" 1>>"${K8S_VERSION}/postmortem.version" 2>/dev/null
-echo "Postmortem Version: $PMCOMMITURL" 1>>"${K8S_VERSION}/postmortem.version" 2>/dev/null
+echo "Postmortem Version: $NUMERICALVERSION, Date: $PMCOMMITDATE, URL $PMCOMMITURL" 1>"${K8S_VERSION}/postmortem.version" 2>/dev/null
 #----------------------------------- collect cluster specific data ------------------------------------
 #node
 OUTPUT=`$KUBECTL get nodes 2>/dev/null`
