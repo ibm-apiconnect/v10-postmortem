@@ -663,7 +663,7 @@ OUTPUT=`$KUBECTL describe scc 2>/dev/null`
 if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then 
     echo "$OUTPUT" > "${K8S_CLUSTER_LIST_DATA}/scc.out"
 else
-    rm -fr $K8S_CLUSTER_LIST_DATA
+    rm -fr "${K8S_CLUSTER_LIST_DATA}/scc.out"
 fi
 
 #------------------------------------------------------------------------------------------------------
