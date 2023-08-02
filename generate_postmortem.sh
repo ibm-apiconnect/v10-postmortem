@@ -665,9 +665,9 @@ if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
 fi
 
 #Get ImageContentSourcePolicy
-OUTPUT=`$KUBECTL get imagecontentsourcepolicy -A -oyaml 2>/dev/null`
+OUTPUT=`$KUBECTL get imagecontentsourcepolicy -oyaml 2>/dev/null`
 if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then 
-    echo "$OUTPUT" > "${K8S_CLUSTER_LIST_DATA}/icsp.out"
+    echo "$OUTPUT" > "${K8S_CLUSTER_LIST_DATA}/icsp.yaml"
 fi
 
 #------------------------------------------------------------------------------------------------------
