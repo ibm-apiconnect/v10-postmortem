@@ -670,6 +670,8 @@ if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
     echo "$OUTPUT" > "${K8S_CLUSTER_LIST_DATA}/icsp.yaml"
 fi
 
+#Get api-resources
+$KUBECTL api-resources &> "${K8S_CLUSTER_LIST_DATA}/api-resources.out"
 #------------------------------------------------------------------------------------------------------
 
 #---------------------------------- collect namespace specific data -----------------------------------
