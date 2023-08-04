@@ -671,7 +671,7 @@ if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
 fi
 
 #Get api-resources
-OUTPUT=`$KUBECTL api-resources 2>/dev/null`
+OUTPUT=`$KUBECTL api-resources &> "${K8S_CLUSTER_LIST_DATA}/api-resources.out"`
 if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then 
     echo "$OUTPUT" > "${K8S_CLUSTER_LIST_DATA}/api-resources.out"
 fi
