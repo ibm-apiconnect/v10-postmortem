@@ -288,7 +288,7 @@ if [[ $IS_OVA -eq 1 ]]; then
     mkdir -p $DOCKERFOLDER
     CONTAINERD="${CONTAINERRUNTIMEFOLDER}/containerd"
     mkdir -p $CONTAINERD
-    SYSLOGSFOLDER="${OVA_DATA}/syslogs"
+    SYSLOGSFOLDER="${OVA_DATA}/var/log"
     mkdir -p $SYSLOGSFOLDER
     DOCKERLOGSFOLDER="${DOCKERFOLDER}/logs"
     mkdir -p $DOCKERLOGSFOLDER
@@ -296,8 +296,10 @@ if [[ $IS_OVA -eq 1 ]]; then
     mkdir -p $CRICTLLOGSFOLDER
     ETCKUBERNETESFOLDER="${FILESYSTEM}/etc/kubernetes"
     mkdir -p $ETCKUBERNETESFOLDER
-    SOURCESFOLDER="${FILESYSTEM}/etc/sources"
+    SOURCESFOLDER="${FILESYSTEM}/etc/apt"
     mkdir -p $SOURCESFOLDER
+    ETCNETPLANFOLDER="${FILESYSTEM}/etc/netplan"
+    mkdir -p $ETCNETPLANFOLDER
     
 
     #grab version
@@ -339,46 +341,48 @@ if [[ $IS_OVA -eq 1 ]]; then
     fi
 
     #pull syslogs
-    find "/var/log" -name "*syslog*" -exec cp '{}' "${SYSLOGSFOLDER}/" \;
+    cp -r /var/log/* "${SYSLOGSFOLDER}/"
 
-    #Getting 50-cloud-init.yaml 
-    find "/etc/netplan" -name "50-cloud-init.yaml" -exec cp '{}' "${OVA_DATA}/" \;
+    #Getting contents of etc/netplan 
+    cp -r /etc/netplan/* "${ETCNETPLANFOLDER}/"
 
     #Getting appliance-control-plane-current
     find "/var/lib/apiconnect" -name "appliance-control-plane-current" -exec cp '{}' "${OVA_DATA}/" \;
 
     #Getting content of /etc/kubernetes directory recursively
-    find "/etc/kubernetes" -exec cp -r '{}' "${ETCKUBERNETESFOLDER}/" \;
+    cp -r /etc/kubernetes/* "${ETCKUBERNETESFOLDER}/"
 
     #Get volumes 
     du -h -d 1 /data/secure/volumes | sort -h &> "${OVA_DATA}/volumes-disk-usage.out"
 
-    #Get -alh/var/log 
-    ls -alh /var/log &> "${OVA_DATA}/var-log-files.out"
-
     #Get time/date information
-    timedatectl &> "${OVA_DATA}/timeDate.out"
+    timedatectl &> "${OVA_DATA}/timeDateCtl.out"
 
     #Getting authorized keys 
     cat /home/apicadm/.ssh/authorized_keys &> "${OVA_DATA}/authorized-keys.out"
 
-    #Getting content of sources.list.d and sources.list 
-    find "/etc/apt" -name "sources.list" -exec cp '{}' "${SOURCESFOLDER}/" \;
-    find "/etc/apt/sources.list.d" -exec cp -r '{}' "${SOURCESFOLDER}/" \;
+    #Getting content of etc/apt
+    cp -r /etc/apt/* "${SOURCESFOLDER}"
 
-    #Setting the crictl runtime endpoint
-    crictl config --set runtime-endpoint=unix:///run/containerd/containerd.sock
+    which crictl &> /dev/null
+    if [[ $? -eq 0 ]]; then 
+        #Setting the crictl runtime endpoint
+        crictl config --set runtime-endpoint=unix:///run/containerd/containerd.sock 
+        
+        #Getting crictl version
+        crictl version &> "${CONTAINERD}/crictl-version.out" 
 
-    #Getting Crictl Logs
-    OUTPUT=`crictl ps -a 2>/dev/null`
-    if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
-        echo "$OUTPUT" > "${CONTAINERD}/crictl-containers.out"
-        while read line; do 
-            CONTAINERID=`echo "$line" | cut -d' ' -f1`
-            crictl logs $CONTAINERID &> "${CRICTLLOGSFOLDER}/${CONTAINERID}.out"
-            [ $? -eq 0 ] || rm -f "${CRICTLLOGSFOLDER}/${CONTAINERID}.out"
-        done <<< "$OUTPUT"
-    fi
+        #Getting Crictl Logs
+        OUTPUT=`crictl ps -a 2>/dev/null`
+        if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
+            echo "$OUTPUT" > "${CONTAINERD}/crictl-containers.out"
+            while read line; do 
+                CONTAINERID=`echo "$line" | cut -d' ' -f1`
+                crictl logs $CONTAINERID &> "${CRICTLLOGSFOLDER}/${CONTAINERID}.out"
+                [ $? -eq 0 ] || rm -f "${CRICTLLOGSFOLDER}/${CONTAINERID}.out"
+            done <<< "$OUTPUT"
+        fi
+    fi 
 
     #Getting Docker Logs
     OUTPUT=`docker ps -a 2>/dev/null`
@@ -392,9 +396,8 @@ if [[ $IS_OVA -eq 1 ]]; then
     fi
 
     #Get Docker and Crictl Version 
-    crictl version &> "${CONTAINERD}/crictl-version.out"
     docker version &> "${DOCKERFOLDER}/docker-version.out"
-    
+
 fi
 #=================================================================================================================
 
