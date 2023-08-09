@@ -280,26 +280,18 @@ if [[ $IS_OVA -eq 1 ]]; then
     #Creating Directories
     OVA_DATA="${TEMP_PATH}/ova"
     mkdir -p $OVA_DATA
-    FILESYSTEM="${OVA_DATA}/filesystem"
-    mkdir -p $FILESYSTEM
+    OVA_FILESYSTEM="${OVA_DATA}/filesystem"
+    mkdir -p $OVA_FILESYSTEM
     CONTAINERRUNTIMEFOLDER="${OVA_DATA}/container-runtime"
     mkdir -p $CONTAINERRUNTIMEFOLDER
     DOCKERFOLDER="${CONTAINERRUNTIMEFOLDER}/docker"
     mkdir -p $DOCKERFOLDER
     CONTAINERD="${CONTAINERRUNTIMEFOLDER}/containerd"
     mkdir -p $CONTAINERD
-    SYSLOGSFOLDER="${OVA_DATA}/var/log"
-    mkdir -p $SYSLOGSFOLDER
     DOCKERLOGSFOLDER="${DOCKERFOLDER}/logs"
     mkdir -p $DOCKERLOGSFOLDER
     CRICTLLOGSFOLDER="${CONTAINERD}/logs"
     mkdir -p $CRICTLLOGSFOLDER
-    ETCKUBERNETESFOLDER="${FILESYSTEM}/etc/kubernetes"
-    mkdir -p $ETCKUBERNETESFOLDER
-    SOURCESFOLDER="${FILESYSTEM}/etc/apt"
-    mkdir -p $SOURCESFOLDER
-    ETCNETPLANFOLDER="${FILESYSTEM}/etc/netplan"
-    mkdir -p $ETCNETPLANFOLDER
     
 
     #grab version
@@ -341,16 +333,16 @@ if [[ $IS_OVA -eq 1 ]]; then
     fi
 
     #pull syslogs
-    cp -r /var/log/* "${SYSLOGSFOLDER}/"
+    cp -r --parents /var/log/ "${OVA_DATA}"
 
     #Getting contents of etc/netplan 
-    cp -r /etc/netplan/* "${ETCNETPLANFOLDER}/"
+    cp -r --parents /etc/netplan/ "${OVA_FILESYSTEM}"
 
     #Getting appliance-control-plane-current
     find "/var/lib/apiconnect" -name "appliance-control-plane-current" -exec cp '{}' "${OVA_DATA}/" \;
 
     #Getting content of /etc/kubernetes directory recursively
-    cp -r /etc/kubernetes/* "${ETCKUBERNETESFOLDER}/"
+    cp -r --parents /etc/kubernetes/ "${OVA_FILESYSTEM}"
 
     #Get volumes 
     du -h -d 1 /data/secure/volumes | sort -h &> "${OVA_DATA}/volumes-disk-usage.out"
@@ -362,7 +354,7 @@ if [[ $IS_OVA -eq 1 ]]; then
     cat /home/apicadm/.ssh/authorized_keys &> "${OVA_DATA}/authorized-keys.out"
 
     #Getting content of etc/apt
-    cp -r /etc/apt/* "${SOURCESFOLDER}"
+    cp -r --parents /etc/apt/ "${OVA_FILESYSTEM}"
 
     which crictl &> /dev/null
     if [[ $? -eq 0 ]]; then 
