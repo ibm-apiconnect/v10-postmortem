@@ -283,16 +283,12 @@ if [[ $IS_OVA -eq 1 ]]; then
     OVA_FILESYSTEM="${OVA_DATA}/filesystem"
     mkdir -p $OVA_FILESYSTEM
     CONTAINERRUNTIMEFOLDER="${OVA_DATA}/container-runtime"
-    mkdir -p $CONTAINERRUNTIMEFOLDER
-    DOCKERFOLDER="${CONTAINERRUNTIMEFOLDER}/docker"
-    mkdir -p $DOCKERFOLDER
     CONTAINERD="${CONTAINERRUNTIMEFOLDER}/containerd"
-    mkdir -p $CONTAINERD
-    DOCKERLOGSFOLDER="${DOCKERFOLDER}/logs"
-    mkdir -p $DOCKERLOGSFOLDER
     CRICTLLOGSFOLDER="${CONTAINERD}/logs"
     mkdir -p $CRICTLLOGSFOLDER
-    
+    DOCKERFOLDER="${CONTAINERRUNTIMEFOLDER}/docker"
+    DOCKERLOGSFOLDER="${DOCKERFOLDER}/logs"
+    mkdir -p $DOCKERLOGSFOLDER
 
     #grab version
     sudo apic version 1>"${OVA_DATA}/version.out" 2>/dev/null
@@ -348,7 +344,7 @@ if [[ $IS_OVA -eq 1 ]]; then
     du -h -d 1 /data/secure/volumes | sort -h &> "${OVA_DATA}/volumes-disk-usage.out"
 
     #Get time/date information
-    timedatectl &> "${OVA_DATA}/timeDateCtl.out"
+    timedatectl &> "${OVA_DATA}/timedatectl.out"
 
     #Getting authorized keys 
     cat /home/apicadm/.ssh/authorized_keys &> "${OVA_DATA}/authorized-keys.out"
