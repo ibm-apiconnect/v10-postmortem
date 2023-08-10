@@ -284,11 +284,11 @@ if [[ $IS_OVA -eq 1 ]]; then
     mkdir -p $OVA_FILESYSTEM
     CONTAINERRUNTIMEFOLDER="${OVA_DATA}/container-runtime"
     CONTAINERD="${CONTAINERRUNTIMEFOLDER}/containerd"
-    CRICTLLOGSFOLDER="${CONTAINERD}/logs"
-    mkdir -p $CRICTLLOGSFOLDER
     DOCKERFOLDER="${CONTAINERRUNTIMEFOLDER}/docker"
     DOCKERLOGSFOLDER="${DOCKERFOLDER}/logs"
     mkdir -p $DOCKERLOGSFOLDER
+    mkdir -p $CONTAINERD
+
 
     #grab version
     sudo apic version 1>"${OVA_DATA}/version.out" 2>/dev/null
@@ -328,8 +328,13 @@ if [[ $IS_OVA -eq 1 ]]; then
         sudo apic logs &>/dev/null
     fi
 
-    #pull syslogs
-    cp -r --parents /var/log/ "${OVA_DATA}"
+    #pull files from var/log
+    cp -r --parents /var/log/containers "${OVA_FILESYSTEM}"
+    find "/var/log" -name "cloud-init.log" -exec cp '{}' "${OVA_FILESYSTEM}"/var/log \;
+    find "/var/log" -name "cloud-init-output.log" -exec cp '{}' "${OVA_FILESYSTEM}"/var/log \;
+    find "/var/log" -name "dmesg" -exec cp '{}' "${OVA_FILESYSTEM}"/var/log \;
+    find "/var/log" -name "*syslog*" -exec cp '{}' "${OVA_FILESYSTEM}"/var/log \;
+
 
     #Getting contents of etc/netplan 
     cp -r --parents /etc/netplan/ "${OVA_FILESYSTEM}"
@@ -361,15 +366,7 @@ if [[ $IS_OVA -eq 1 ]]; then
         crictl version &> "${CONTAINERD}/crictl-version.out" 
 
         #Getting Crictl Logs
-        OUTPUT=`crictl ps -a 2>/dev/null`
-        if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
-            echo "$OUTPUT" > "${CONTAINERD}/crictl-containers.out"
-            while read line; do 
-                CONTAINERID=`echo "$line" | cut -d' ' -f1`
-                crictl logs $CONTAINERID &> "${CRICTLLOGSFOLDER}/${CONTAINERID}.out"
-                [ $? -eq 0 ] || rm -f "${CRICTLLOGSFOLDER}/${CONTAINERID}.out"
-            done <<< "$OUTPUT"
-        fi
+        crictl ps -a &>"${CONTAINERD}/containatinerd-containers.out"
     fi 
 
     #Getting Docker Logs
