@@ -276,8 +276,19 @@ for NAMESPACE_OPTIONS in "rook-ceph" "rook-ceph-system" "ibm-common-services" "o
 
 #================================================= pull ova data =================================================
 if [[ $IS_OVA -eq 1 ]]; then
+
+    #Creating Directories
     OVA_DATA="${TEMP_PATH}/ova"
     mkdir -p $OVA_DATA
+    OVA_FILESYSTEM="${OVA_DATA}/filesystem"
+    mkdir -p $OVA_FILESYSTEM
+    CONTAINERRUNTIMEFOLDER="${OVA_DATA}/container-runtime"
+    CONTAINERD="${CONTAINERRUNTIMEFOLDER}/containerd"
+    DOCKERFOLDER="${CONTAINERRUNTIMEFOLDER}/docker"
+    DOCKERLOGSFOLDER="${DOCKERFOLDER}/logs"
+    mkdir -p $DOCKERLOGSFOLDER
+    mkdir -p $CONTAINERD
+
 
     #grab version
     sudo apic version 1>"${OVA_DATA}/version.out" 2>/dev/null
@@ -317,8 +328,61 @@ if [[ $IS_OVA -eq 1 ]]; then
         sudo apic logs &>/dev/null
     fi
 
-    #pull syslogs
-    find "/var/log" -name "*syslog*" -exec cp '{}' "${OVA_DATA}/" \;
+    #pull files from var/log
+    cp -r --parents /var/log/containers "${OVA_FILESYSTEM}"
+    find "/var/log" -name "cloud-init.log" -exec cp '{}' "${OVA_FILESYSTEM}"/var/log \;
+    find "/var/log" -name "cloud-init-output.log" -exec cp '{}' "${OVA_FILESYSTEM}"/var/log \;
+    find "/var/log" -name "dmesg" -exec cp '{}' "${OVA_FILESYSTEM}"/var/log \;
+    find "/var/log" -name "*syslog*" -exec cp '{}' "${OVA_FILESYSTEM}"/var/log \;
+
+
+    #Getting contents of etc/netplan 
+    cp -r --parents /etc/netplan/ "${OVA_FILESYSTEM}"
+
+    #Getting appliance-control-plane-current
+    find "/var/lib/apiconnect" -name "appliance-control-plane-current" -exec cp '{}' "${OVA_DATA}/" \;
+
+    #Getting content of /etc/kubernetes directory recursively
+    cp -r --parents /etc/kubernetes/ "${OVA_FILESYSTEM}"
+
+    #Get volumes 
+    du -h -d 1 /data/secure/volumes | sort -h &> "${OVA_DATA}/volumes-disk-usage.out"
+
+    #Get time/date information
+    timedatectl &> "${OVA_DATA}/timedatectl.out"
+
+    #Getting authorized keys 
+    cat /home/apicadm/.ssh/authorized_keys &> "${OVA_DATA}/authorized-keys.out"
+
+    #Getting content of etc/apt
+    cp -r --parents /etc/apt/ "${OVA_FILESYSTEM}"
+
+    which crictl &> /dev/null
+    if [[ $? -eq 0 ]]; then 
+        #Setting the crictl runtime endpoint
+        crictl config --set runtime-endpoint=unix:///run/containerd/containerd.sock 
+        
+        #Getting crictl version
+        crictl version &> "${CONTAINERD}/crictl-version.out" 
+
+        #Getting Crictl Logs
+        crictl ps -a &>"${CONTAINERD}/containatinerd-containers.out"
+    fi 
+
+    #Getting Docker Logs
+    OUTPUT=`docker ps -a 2>/dev/null`
+    if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
+        echo "$OUTPUT" > "${DOCKERFOLDER}/docker-containers.out"
+        while read line; do 
+            CONTAINERID=`echo "$line" | cut -d' ' -f1`
+            docker logs $CONTAINERID &> "${DOCKERLOGSFOLDER}/${CONTAINERID}.out"
+            [ $? -eq 0 ] || rm -f "${DOCKERLOGSFOLDER}/${CONTAINERID}.out"
+        done <<< "$OUTPUT"
+    fi
+
+    #Get Docker and Crictl Version 
+    docker version &> "${DOCKERFOLDER}/docker-version.out"
+
 fi
 #=================================================================================================================
 
