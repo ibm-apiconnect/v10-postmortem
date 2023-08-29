@@ -267,7 +267,7 @@ OUTPUT_METRICS=$?
 
 #Namespaces
 for NAMESPACE_OPTIONS in "rook-ceph" "rook-ceph-system" "ibm-common-services" "openshift-marketplace" "openshift-operators" "openshift-operator-lifecycle-manager" ;
-    do 
+    do
         $KUBECTL get ns 2>/dev/null | grep -q "$NAMESPACE_OPTIONS"
         if [[ $? -eq 0 && $SPECIFIC_NAMESPACES -ne 1 ]]; then
             NAMESPACE_LIST+=" $NAMESPACE_OPTIONS"
@@ -336,7 +336,7 @@ if [[ $IS_OVA -eq 1 ]]; then
     find "/var/log" -name "*syslog*" -exec cp '{}' "${OVA_FILESYSTEM}"/var/log \;
 
 
-    #Getting contents of etc/netplan 
+    #Getting contents of etc/netplan
     cp -r --parents /etc/netplan/ "${OVA_FILESYSTEM}"
 
     #Getting appliance-control-plane-current
@@ -345,42 +345,42 @@ if [[ $IS_OVA -eq 1 ]]; then
     #Getting content of /etc/kubernetes directory recursively
     cp -r --parents /etc/kubernetes/ "${OVA_FILESYSTEM}"
 
-    #Get volumes 
+    #Get volumes
     du -h -d 1 /data/secure/volumes | sort -h &> "${OVA_DATA}/volumes-disk-usage.out"
 
     #Get time/date information
     timedatectl &> "${OVA_DATA}/timedatectl.out"
 
-    #Getting authorized keys 
+    #Getting authorized keys
     cat /home/apicadm/.ssh/authorized_keys &> "${OVA_DATA}/authorized-keys.out"
 
     #Getting content of etc/apt
     cp -r --parents /etc/apt/ "${OVA_FILESYSTEM}"
 
     which crictl &> /dev/null
-    if [[ $? -eq 0 ]]; then 
+    if [[ $? -eq 0 ]]; then
         #Setting the crictl runtime endpoint
-        crictl config --set runtime-endpoint=unix:///run/containerd/containerd.sock 
-        
+        crictl config --set runtime-endpoint=unix:///run/containerd/containerd.sock
+
         #Getting crictl version
-        crictl version &> "${CONTAINERD}/crictl-version.out" 
+        crictl version &> "${CONTAINERD}/crictl-version.out"
 
         #Getting Crictl Logs
         crictl ps -a &>"${CONTAINERD}/containatinerd-containers.out"
-    fi 
+    fi
 
     #Getting Docker Logs
     OUTPUT=`docker ps -a 2>/dev/null`
     if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
         echo "$OUTPUT" > "${DOCKERFOLDER}/docker-containers.out"
-        while read line; do 
+        while read line; do
             CONTAINERID=`echo "$line" | cut -d' ' -f1`
             docker logs $CONTAINERID &> "${DOCKERLOGSFOLDER}/${CONTAINERID}.out"
             [ $? -eq 0 ] || rm -f "${DOCKERLOGSFOLDER}/${CONTAINERID}.out"
         done <<< "$OUTPUT"
     fi
 
-    #Get Docker and Crictl Version 
+    #Get Docker and Crictl Version
     docker version &> "${DOCKERFOLDER}/docker-version.out"
 
 fi
@@ -565,7 +565,7 @@ mkdir -p $K8S_CLUSTER_MUTATINGWEBHOOK_YAML_OUTPUT
 #grab kubernetes version
 $KUBECTL version 1>"${K8S_VERSION}/$KUBECTL.version" 2>/dev/null
 
-#grab postmortem version 
+#grab postmortem version
 print_postmortem_version 1>"${K8S_VERSION}/postmortem.version" 2>/dev/null
 #----------------------------------- collect cluster specific data ------------------------------------
 #node
@@ -725,15 +725,15 @@ else
     rm -fr $K8S_CLUSTER_MUTATINGWEBHOOK_CONFIGURATIONS
 fi
 
-#Describe SCC 
-OUTPUT=`$KUBECTL describe scc 2>/dev/null` 
-if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then 
+#Describe SCC
+OUTPUT=`$KUBECTL describe scc 2>/dev/null`
+if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
     echo "$OUTPUT" > "${K8S_CLUSTER_LIST_DATA}/scc.out"
 fi
 
 #Get ImageContentSourcePolicy
 OUTPUT=`$KUBECTL get imagecontentsourcepolicy -oyaml 2>/dev/null`
-if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then 
+if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
     echo "$OUTPUT" > "${K8S_CLUSTER_LIST_DATA}/icsp.yaml"
 fi
 
@@ -1015,7 +1015,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
 
     #grab edb mustgather
     if [[ $COLLECT_EDB -eq 1 && "$NAMESPACE" != "kube-system" ]]; then
-        $CURRENT_PATH/edb_mustgather.sh $NAMESPACE $K8S_NAMESPACES_EDB
+        $CURRENT_PATH/edb_mustgather.sh $NAMESPACE $K8S_NAMESPACES_EDB &> "${K8S_NAMESPACES_EDB}/edb-collect.log"
     fi
 
     #grab daemonset data
@@ -1313,7 +1313,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
                 PATRONICTL_HISTORY_OUTPUT=`$KUBECTL exec -n $NAMESPACE ${pod} -c database -- patronictl history 2>"/dev/null"`
                 echo "$PATRONICTL_HISTORY_OUTPUT" > $health_dir/patronictl-history.out
 
-                #SQL Commands 
+                #SQL Commands
                 QUERY1="select * from pg_stat_subscription"
                 QUERY2="select relname,last_vacuum, last_autovacuum, last_analyze, last_autoanalyze from pg_stat_user_tables"
                 QUERY3="select relname, n_dead_tup, last_autovacuum, autovacuum_count FROM pg_stat_sys_tables where relname = 'pg_class';"
@@ -1322,31 +1322,31 @@ for NAMESPACE in $NAMESPACE_LIST; do
                 QUERY6="select * from pg_stat_replication"
                 QUERY7="select * from pg_publication"
                 QUERY8="select * from pg_stat_wal_receiver;"
-                
+
                 #Default postgres database
                 POSTGRES_QUERIES=("QUERY1" "QUERY5" "QUERY6" "QUERY8" "QUERY2" "QUERY3" "QUERY4")
-                for QUERY in "${POSTGRES_QUERIES[@]}"; do 
+                for QUERY in "${POSTGRES_QUERIES[@]}"; do
                     QUERY_RUNNING="${!QUERY}"
                     echo "$QUERY_RUNNING" >> $health_dir/postgres-sql-queries.out
-                    SQL_OUTPUT=`$KUBECTL exec -i ${pod} -- psql -c "$QUERY_RUNNING" 2>"/dev/null"` 
+                    SQL_OUTPUT=`$KUBECTL exec -i ${pod} -- psql -c "$QUERY_RUNNING" 2>"/dev/null"`
                     echo -e "$SQL_OUTPUT\n" >> $health_dir/postgres-sql-queries.out
                 done
 
                 #APIM Database
                 APIM_QUERIES=("QUERY7" "QUERY2" "QUERY3" "QUERY4")
-                for QUERY in "${APIM_QUERIES[@]}"; do 
+                for QUERY in "${APIM_QUERIES[@]}"; do
                     QUERY_RUNNING="${!QUERY}"
                     echo "$QUERY_RUNNING" >> $health_dir/apim-sql-queries.out
-                    SQL_OUTPUT=`$KUBECTL exec -i ${pod} -- psql -d apim -c "$QUERY_RUNNING" 2>"/dev/null"` 
+                    SQL_OUTPUT=`$KUBECTL exec -i ${pod} -- psql -d apim -c "$QUERY_RUNNING" 2>"/dev/null"`
                     echo -e "$SQL_OUTPUT\n" >> $health_dir/apim-sql-queries.out
                 done
 
                 #LUR Database
                 LUR_QUERIES=("QUERY7" "QUERY2" "QUERY3" "QUERY4")
-                for QUERY in "${LUR_QUERIES[@]}"; do 
+                for QUERY in "${LUR_QUERIES[@]}"; do
                     QUERY_RUNNING="${!QUERY}"
                     echo "$QUERY_RUNNING" >> $health_dir/lur-sql-queries.out
-                    SQL_OUTPUT=`$KUBECTL exec -i ${pod} -- psql -d lur -c "$QUERY_RUNNING" 2>"/dev/null"` 
+                    SQL_OUTPUT=`$KUBECTL exec -i ${pod} -- psql -d lur -c "$QUERY_RUNNING" 2>"/dev/null"`
                     echo -e "$SQL_OUTPUT\n" >> $health_dir/lur-sql-queries.out
                 done
 
