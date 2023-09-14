@@ -61,7 +61,7 @@ K8S_NAMESPACES_POD_LOG_DATA="${K8S_NAMESPACES_POD_DATA}/logs"
 NS=${LOG_PATH}/namespaces
 SPECIFIC_NS_EDB_OP=${NS}/${EDB_OP_NAMESPACE}
 SPECIFIC_NS_CLUSTER=${NS}/${EDB_CLUSTER_NAMESPACE}
-PO=${SPECIFIC_NS_EDB_OP}/pods
+OPERATOR_PODS=${SPECIFIC_NS_EDB_OP}/pods
 CLUSTER=${SPECIFIC_NS_CLUSTER}/cluster
 CLUSTER_PODS=${SPECIFIC_NS_CLUSTER}/pods
 CLUSTER_BACKUPS=${SPECIFIC_NS_CLUSTER}/backups
@@ -69,22 +69,25 @@ CLUSTER_BACKUPS=${SPECIFIC_NS_CLUSTER}/backups
 
 mkdir ${NS}
 mkdir ${SPECIFIC_NS_EDB_OP}
-mkdir ${SPECIFIC_NS_CLUSTER}
-mkdir ${PO}
+mkdir -p ${SPECIFIC_NS_CLUSTER}
+mkdir ${OPERATOR_PODS}
 mkdir ${CLUSTER}
 mkdir ${CLUSTER}/${EDB_CLUSTER_NAME}
-mkdir ${CLUSTER_PODS}
+mkdir -p ${CLUSTER_PODS}
 mkdir ${CLUSTER_BACKUPS}
 mkdir ${CLUSTER_BACKUPS}/${EDB_CLUSTER_NAME}
 
 function gatherEdbOperatorData() {
+    if [ "$CNP_INSTALLED" = true ]; then
+      $KUBECTL cnp report operator --logs -n ${EDB_OP_NAMESPACE} -f ${SPECIFIC_NS_EDB_OP}/operator-report.zip
+    fi
     for pod in $PG_OP
     do
-        mkdir ${PO}/${pod}
-        $KUBECTL get po ${pod} -o yaml -n ${EDB_OP_NAMESPACE} > ${PO}/${pod}/pod.yaml
-        $KUBECTL describe pod ${pod} -n ${EDB_OP_NAMESPACE} > ${PO}/${pod}/describe.txt
-        $KUBECTL logs ${pod} -n ${EDB_OP_NAMESPACE} > ${PO}/${pod}/logs.txt
-        $KUBECTL logs ${pod} -n ${EDB_OP_NAMESPACE} --previous 2>/dev/null > ${PO}/${pod}/previous-logs.txt
+        mkdir ${OPERATOR_PODS}/${pod}
+        $KUBECTL get po ${pod} -o yaml -n ${EDB_OP_NAMESPACE} > ${OPERATOR_PODS}/${pod}/pod.yaml
+        $KUBECTL describe pod ${pod} -n ${EDB_OP_NAMESPACE} > ${OPERATOR_PODS}/${pod}/describe.txt
+        $KUBECTL logs ${pod} -n ${EDB_OP_NAMESPACE} > ${OPERATOR_PODS}/${pod}/logs.txt
+        $KUBECTL logs ${pod} -n ${EDB_OP_NAMESPACE} --previous 2>/dev/null > ${OPERATOR_PODS}/${pod}/previous-logs.txt
     done
 }
 
@@ -100,6 +103,9 @@ function gatherClusterData() {
 }
 
 function gatherEDBPodData() {
+    if [ "$CNP_INSTALLED" = true ]; then
+      $KUBECTL cnp report cluster ${EDB_CLUSTER_NAME} --logs -n ${EDB_CLUSTER_NAMESPACE} -f ${SPECIFIC_NS_CLUSTER}/cluster-report.zip
+    fi
     $KUBECTL get pod -l k8s.enterprisedb.io/cluster=${EDB_CLUSTER_NAME} -L role -n ${EDB_CLUSTER_NAMESPACE} > ${CLUSTER_PODS}/pods.txt
     for pod in ${EDB_POD_NAMES}; do
         mkdir ${CLUSTER_PODS}/${pod}
