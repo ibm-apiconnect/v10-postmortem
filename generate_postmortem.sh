@@ -297,7 +297,7 @@ if [[ $IS_OVA -eq 1 ]]; then
     sudo apic status 1>"${OVA_DATA}/status.out" 2>/dev/null
 
     #grab health-check
-    sudo apic health-check -v 1>"${OVA_DATA}/health-check.out" 2>/dev/null
+    sudo apic health-check -v >"${OVA_DATA}/health-check.out" 2>&1
 
     #grab subsystem history
     sudo apic subsystem 1>"${OVA_DATA}/subsystem-history.out" 2>/dev/null
