@@ -334,7 +334,7 @@ if [[ $IS_OVA -eq 1 ]]; then
     find "/var/log" -name "cloud-init-output.log" -exec cp '{}' "${OVA_FILESYSTEM}"/var/log \;
     find "/var/log" -name "dmesg" -exec cp '{}' "${OVA_FILESYSTEM}"/var/log \;
     find "/var/log" -name "*syslog*" -exec cp '{}' "${OVA_FILESYSTEM}"/var/log \;
-
+    find "/var/log" -name "nmon" -exec cp -r '{}' "${OVA_FILESYSTEM}"/var/log \;
 
     #Getting contents of etc/netplan
     cp -r --parents /etc/netplan/ "${OVA_FILESYSTEM}"
