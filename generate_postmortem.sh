@@ -1328,7 +1328,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
                 for QUERY in "${POSTGRES_QUERIES[@]}"; do
                     QUERY_RUNNING="${!QUERY}"
                     echo "$QUERY_RUNNING" >> $health_dir/postgres-sql-queries.out
-                    SQL_OUTPUT=`$KUBECTL exec -i ${pod} -- psql -c "$QUERY_RUNNING" 2>"/dev/null"`
+                    SQL_OUTPUT=`$KUBECTL exec -i ${pod} -- psql -c "$QUERY_RUNNING" 2>/dev/null </dev/null`
                     echo -e "$SQL_OUTPUT\n" >> $health_dir/postgres-sql-queries.out
                 done
 
@@ -1337,7 +1337,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
                 for QUERY in "${APIM_QUERIES[@]}"; do
                     QUERY_RUNNING="${!QUERY}"
                     echo "$QUERY_RUNNING" >> $health_dir/apim-sql-queries.out
-                    SQL_OUTPUT=`$KUBECTL exec -i ${pod} -- psql -d apim -c "$QUERY_RUNNING" 2>"/dev/null"`
+                    SQL_OUTPUT=`$KUBECTL exec -i ${pod} -- psql -d apim -c "$QUERY_RUNNING" 2>/dev/null </dev/null`
                     echo -e "$SQL_OUTPUT\n" >> $health_dir/apim-sql-queries.out
                 done
 
@@ -1346,7 +1346,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
                 for QUERY in "${LUR_QUERIES[@]}"; do
                     QUERY_RUNNING="${!QUERY}"
                     echo "$QUERY_RUNNING" >> $health_dir/lur-sql-queries.out
-                    SQL_OUTPUT=`$KUBECTL exec -i ${pod} -- psql -d lur -c "$QUERY_RUNNING" 2>"/dev/null"`
+                    SQL_OUTPUT=`$KUBECTL exec -i ${pod} -- psql -d lur -c "$QUERY_RUNNING" 2>/dev/null </dev/null`
                     echo -e "$SQL_OUTPUT\n" >> $health_dir/lur-sql-queries.out
                 done
 
