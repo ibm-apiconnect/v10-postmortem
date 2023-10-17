@@ -266,7 +266,7 @@ $KUBECTL get pods --all-namespaces 2>/dev/null | egrep -q "metrics-server|opensh
 OUTPUT_METRICS=$?
 
 #Namespaces
-for NAMESPACE_OPTIONS in "rook-ceph" "rook-ceph-system" "ibm-common-services" "openshift-marketplace" "openshift-operators" "openshift-operator-lifecycle-manager" ;
+for NAMESPACE_OPTIONS in "rook-ceph" "rook-ceph-system" "ibm-common-services" "openshift-marketplace" "openshift-operators" "openshift-operator-lifecycle-manager" "cert-manager" "certmanager" ;
     do
         $KUBECTL get ns 2>/dev/null | grep -q "$NAMESPACE_OPTIONS"
         if [[ $? -eq 0 && $SPECIFIC_NAMESPACES -ne 1 ]]; then
