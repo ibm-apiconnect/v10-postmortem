@@ -17,6 +17,22 @@ print_postmortem_version(){
     echo "Postmortem Version: $NUMERICALVERSION, Date: $PMCOMMITDATE, URL: $PMCOMMITURL"
 }
 
+# We want customers to use the latest postmortem scripts wherever possible
+warn_if_script_is_not_latest() {
+    local script_name=$1
+    local script_remote_url=$2
+
+    local_script_hash=$(sha256sum "$script_name" | cut -d ' ' -f1)
+    remote_script_hash=$(curl -s "$script_remote_url" | sha256sum | cut -d ' ' -f1) || true
+    # Only give the warning if we know this was a good returned hash
+    if [[ -n "$remote_script_hash" && ${#remote_script_hash} -eq 64 && "$remote_script_hash" != "$local_script_hash" ]]; then
+        echo "####################################################################################"
+        echo "NOTE: There is a newer version of $script_name available. Please download the latest postmortem script from https://github.com/ibm-apiconnect/v10-postmortem so that up-to-date information is gathered."
+        echo "WARNING: If you don't use the latest $script_name script, IBM support may ask you to download the latest $script_name script and run it again."
+        echo "####################################################################################"
+    fi
+}
+
 #Confirm whether oc or kubectl exists and choose which command tool to use based on that
 which oc &> /dev/null
 if [[ $? -eq 0 ]]; then
@@ -29,6 +45,8 @@ else
     fi
     KUBECTL="kubectl"
 fi
+
+warn_if_script_is_not_latest ${0##*/} "https://raw.githubusercontent.com/ibm-apiconnect/v10-postmortem/master/generate_postmortem.sh"
 
 
 for switch in $@; do
@@ -1010,11 +1028,13 @@ for NAMESPACE in $NAMESPACE_LIST; do
 
     #grab crunchy mustgather
     if [[ $COLLECT_CRUNCHY -eq 1 && "$NAMESPACE" != "kube-system" ]]; then
+        warn_if_script_is_not_latest crunchy_gather.py https://raw.githubusercontent.com/ibm-apiconnect/v10-postmortem/master/crunchy_gather.py
         $CURRENT_PATH/crunchy_gather.py -n $NAMESPACE -l 5 -c $KUBECTL -o $K8S_NAMESPACES_CRUNCHY_DATA &> "${K8S_NAMESPACES_CRUNCHY_DATA}/crunchy-collect.log"
     fi
 
     #grab edb mustgather
     if [[ $COLLECT_EDB -eq 1 && "$NAMESPACE" != "kube-system" ]]; then
+        warn_if_script_is_not_latest edb_mustgather.sh https://raw.githubusercontent.com/ibm-apiconnect/v10-postmortem/master/edb_mustgather.sh
         $CURRENT_PATH/edb_mustgather.sh $NAMESPACE $K8S_NAMESPACES_EDB &> "${K8S_NAMESPACES_EDB}/edb-collect.log"
     fi
 
