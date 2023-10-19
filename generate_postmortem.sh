@@ -164,6 +164,7 @@ for switch in $@; do
                 echo -e "Unable to locate script [crunchy_gather.py] in current directory.  Download from GitHub repository.  Exiting..."
                 exit 1
             fi
+            warn_if_script_is_not_latest crunchy_gather.py https://raw.githubusercontent.com/ibm-apiconnect/v10-postmortem/master/crunchy_gather.py
             chmod +x $SCRIPT_LOCATION
             ;;
         *"--collect-edb"*)
@@ -173,6 +174,7 @@ for switch in $@; do
                 echo -e "Unable to locate script [edb_mustgather.sh] in current directory.  Download from GitHub repository.  Exiting..."
                 exit 1
             fi
+            warn_if_script_is_not_latest edb_mustgather.sh https://raw.githubusercontent.com/ibm-apiconnect/v10-postmortem/master/edb_mustgather.sh
             chmod +x $SCRIPT_LOCATION
             ;;
         *"--version"*)
@@ -1028,13 +1030,11 @@ for NAMESPACE in $NAMESPACE_LIST; do
 
     #grab crunchy mustgather
     if [[ $COLLECT_CRUNCHY -eq 1 && "$NAMESPACE" != "kube-system" ]]; then
-        warn_if_script_is_not_latest crunchy_gather.py https://raw.githubusercontent.com/ibm-apiconnect/v10-postmortem/master/crunchy_gather.py
         $CURRENT_PATH/crunchy_gather.py -n $NAMESPACE -l 5 -c $KUBECTL -o $K8S_NAMESPACES_CRUNCHY_DATA &> "${K8S_NAMESPACES_CRUNCHY_DATA}/crunchy-collect.log"
     fi
 
     #grab edb mustgather
     if [[ $COLLECT_EDB -eq 1 && "$NAMESPACE" != "kube-system" ]]; then
-        warn_if_script_is_not_latest edb_mustgather.sh https://raw.githubusercontent.com/ibm-apiconnect/v10-postmortem/master/edb_mustgather.sh
         $CURRENT_PATH/edb_mustgather.sh $NAMESPACE $K8S_NAMESPACES_EDB &> "${K8S_NAMESPACES_EDB}/edb-collect.log"
     fi
 
