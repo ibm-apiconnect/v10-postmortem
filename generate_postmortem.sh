@@ -19,17 +19,24 @@ print_postmortem_version(){
 
 # We want customers to use the latest postmortem scripts wherever possible
 warn_if_script_is_not_latest() {
+    if [[ ${NO_SCRIPT_CHECK:-0} -eq 1 ]]; then
+        return
+    fi
+
     local script_name=$1
     local script_remote_url=$2
 
     local_script_hash=$(sha256sum "$script_name" | cut -d ' ' -f1)
-    remote_script_hash=$(curl -s "$script_remote_url" | sha256sum | cut -d ' ' -f1) || true
+    response=$(curl -s --connect-timeout 5 "$script_remote_url") && rc=$? || rc=$?
     # Only give the warning if we know this was a good returned hash
-    if [[ -n "$remote_script_hash" && ${#remote_script_hash} -eq 64 && "$remote_script_hash" != "$local_script_hash" ]]; then
-        echo "####################################################################################"
-        echo "NOTE: There is a newer version of $script_name available. Please download the latest postmortem script from https://github.com/ibm-apiconnect/v10-postmortem so that up-to-date information is gathered."
-        echo "WARNING: If you don't use the latest $script_name script, IBM support may ask you to download the latest $script_name script and run it again."
-        echo "####################################################################################"
+    if [[ "$rc" -eq 0 ]]; then
+        remote_script_hash=$(echo "$response" | sha256sum | cut -d ' ' -f1) || true
+        if [[ -n "$remote_script_hash" && ${#remote_script_hash} -eq 64 && "$remote_script_hash" != "$local_script_hash" ]]; then
+            echo "---------------------------------------------------------"
+            echo "NOTE: There is a newer version of $script_name available. Please download the latest postmortem script from https://github.com/ibm-apiconnect/v10-postmortem so that up-to-date information is gathered."
+            echo "WARNING: If you don't use the latest $script_name script, IBM support may ask you to download the latest $script_name script and run it again."
+            echo "---------------------------------------------------------"
+        fi
     fi
 }
 
@@ -45,9 +52,6 @@ else
     fi
     KUBECTL="kubectl"
 fi
-
-warn_if_script_is_not_latest ${0##*/} "https://raw.githubusercontent.com/ibm-apiconnect/v10-postmortem/master/generate_postmortem.sh"
-
 
 for switch in $@; do
     case $switch in
@@ -77,6 +81,7 @@ for switch in $@; do
             echo -e "--diagnostic-analytics:  Set to include additional analytics specific data."
             echo -e ""
             echo -e "--debug:                 Set to enable verbose logging."
+            echo -e "--no-script-check:       Set to disable checking if the postmortem scripts are up to date."
             echo -e ""
             echo -e "--version:               Show postmortem version"
             exit 0
@@ -154,6 +159,9 @@ for switch in $@; do
         *"--no-prompt"*)
             NO_PROMPT=1
             ;;
+        *"--no-script-check"*)
+            NO_SCRIPT_CHECK=1
+            ;;
         *"--collect-private-keys"*)
             COLLECT_PRIVATE_KEYS=1
             ;;
@@ -192,6 +200,8 @@ done
 #Printing Postmortem Version
 print_postmortem_version
 echo "using [$KUBECTL] command for cluster cli"
+
+warn_if_script_is_not_latest ${0##*/} "https://raw.githubusercontent.com/ibm-apiconnect/v10-postmortem/master/generate_postmortem.sh"
 
 if [[ -z "$LOG_LIMIT" ]]; then
     LOG_LIMIT=""
