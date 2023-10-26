@@ -318,8 +318,10 @@ if [[ $IS_OVA -eq 1 ]]; then
     DOCKERLOGSFOLDER="${DOCKERFOLDER}/logs"
     mkdir -p $DOCKERLOGSFOLDER
     mkdir -p $CONTAINERD
-    OVA_USRFOLDER="${OVA_FILESYSTEM}/usr"
-    mkdir -p $OVA_USRFOLDER
+    OVA_LIBFOLDER="${OVA_FILESYSTEM}/var/lib"
+    OVA_USRLOCALLIBFOLDER="${OVA_FILESYSTEM}/usr/local/lib"
+    mkdir -p $OVA_LIBFOLDER
+    mkdir -p $OVA_USRLOCALLIBFOLDER
 
 
     #grab version
@@ -416,16 +418,16 @@ if [[ $IS_OVA -eq 1 ]]; then
     docker version &> "${DOCKERFOLDER}/docker-version.out"
 
     #Getting subsystem meta file content
-    cat /var/lib/apiconnect-subsystem/meta.yml 1>"${OVA_FILESYSTEM}/var/subsystem-meta.out" 2>/dev/null
+    cat /var/lib/apiconnect-subsystem/meta.yml 1>"${OVA_LIBFOLDER}/subsystem-meta.out" 2>/dev/null
 
     #Getting side-registry recursive file listing   
-    find /var/lib/apiconnect/side-registry/ 1>"${OVA_FILESYSTEM}/var/side-registry.out" 2>/dev/null
+    find /var/lib/apiconnect/side-registry/ 1>"${OVA_LIBFOLDER}/side-registry.out" 2>/dev/null
 
     #Getting appliance-control-plane recursive file listing   
-    find /usr/local/lib/appliance-control-plane/ 1>"${OVA_FILESYSTEM}/usr/appliance-control-plane.out" 2>/dev/null
+    find /usr/local/lib/appliance-control-plane/ 1>"${OVA_USRLOCALLIBFOLDER}/appliance-control-plane.out" 2>/dev/null
 
     #Getting appliance-side-registry recursive file listing   
-    find /usr/local/lib/appliance-side-registry/ 1>"${OVA_FILESYSTEM}/usr/appliance-side-registry.out" 2>/dev/null
+    find /usr/local/lib/appliance-side-registry/ 1>"${OVA_USRLOCALLIBFOLDER}/appliance-side-registry.out" 2>/dev/null
 
 fi
 #=================================================================================================================
