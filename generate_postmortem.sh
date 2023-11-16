@@ -177,6 +177,14 @@ for switch in $@; do
             ;;
         *"--collect-edb"*)
             COLLECT_EDB=1
+
+            if which kubectl-cnp >/dev/null; then
+                echo kubectl-cnp plugin found
+            else
+                echo -e "kubectl-cnp plugin not found, please install it from here https://www.enterprisedb.com/docs/postgres_for_kubernetes/latest/kubectl-plugin.  Exiting..."
+                exit 1
+            fi
+
             SCRIPT_LOCATION="`pwd`/edb_mustgather.sh"
             if [[ ! -f $SCRIPT_LOCATION ]]; then
                 echo -e "Unable to locate script [edb_mustgather.sh] in current directory.  Download from GitHub repository.  Exiting..."
@@ -420,13 +428,13 @@ if [[ $IS_OVA -eq 1 ]]; then
     #Getting subsystem meta file content
     cat /var/lib/apiconnect-subsystem/meta.yml 1>"${OVA_LIBFOLDER}/subsystem-meta.out" 2>/dev/null
 
-    #Getting side-registry recursive file listing   
+    #Getting side-registry recursive file listing
     find /var/lib/apiconnect/side-registry/ 1>"${OVA_LIBFOLDER}/side-registry.out" 2>/dev/null
 
-    #Getting appliance-control-plane recursive file listing   
+    #Getting appliance-control-plane recursive file listing
     find /usr/local/lib/appliance-control-plane/ 1>"${OVA_USRLOCALLIBFOLDER}/appliance-control-plane.out" 2>/dev/null
 
-    #Getting appliance-side-registry recursive file listing   
+    #Getting appliance-side-registry recursive file listing
     find /usr/local/lib/appliance-side-registry/ 1>"${OVA_USRLOCALLIBFOLDER}/appliance-side-registry.out" 2>/dev/null
 
 fi

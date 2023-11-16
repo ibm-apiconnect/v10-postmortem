@@ -18,14 +18,12 @@ fi
 
 EDB_CLUSTER_NAMESPACE=$1
 LOG_PATH=$2
-CNP_INSTALLED=false
 
 if which kubectl-cnp >/dev/null; then
     echo kubectl-cnp plugin found
-    CNP_INSTALLED=true
 else
-    echo kubectl-cnp plugin not found, please install it from here https://www.enterprisedb.com/docs/postgres_for_kubernetes/latest/cnp-plugin
-    CNP_INSTALLED=false
+    echo kubectl-cnp plugin not found, please install it from here https://www.enterprisedb.com/docs/postgres_for_kubernetes/latest/kubectl-plugin
+    exit 1
 fi
 
 if [ -z "$1" ] || [ -z "$2" ]
@@ -44,7 +42,7 @@ if [ "$ARCHITECTURE" = 's390x' ]; then
     EDB_OP_NAMESPACE='ibm-common-services'
     PG_OP=$($KUBECTL get po -n ${EDB_OP_NAMESPACE} -o=custom-columns=NAME:.metadata.name | grep postgresql-operator-controller-manager)
 else
-    EDB_OP_NAMESPACE=$EDB_CLUSTER_NAMESPACE
+    EDB_OP_NAMESPACE=$($KUBECTL get po -A | grep edb-operator | awk -F ' ' '{print $1}' | head -n 1)
     PG_OP=$($KUBECTL get po -n ${EDB_OP_NAMESPACE} -o=custom-columns=NAME:.metadata.name | grep edb-operator)
 fi
 
@@ -78,9 +76,8 @@ mkdir ${CLUSTER_BACKUPS}
 mkdir ${CLUSTER_BACKUPS}/${EDB_CLUSTER_NAME}
 
 function gatherEdbOperatorData() {
-    if [ "$CNP_INSTALLED" = true ]; then
-      $KUBECTL cnp report operator --logs -n ${EDB_OP_NAMESPACE} -f ${SPECIFIC_NS_EDB_OP}/operator-report.zip
-    fi
+    $KUBECTL cnp report operator --logs -n ${EDB_OP_NAMESPACE} -f ${SPECIFIC_NS_EDB_OP}/operator-report.zip
+
     for pod in $PG_OP
     do
         mkdir ${OPERATOR_PODS}/${pod}
@@ -92,10 +89,9 @@ function gatherEdbOperatorData() {
 }
 
 function gatherClusterData() {
-    if [ "$CNP_INSTALLED" = true ]; then
-        $KUBECTL cnp status ${EDB_CLUSTER_NAME} -n ${EDB_CLUSTER_NAMESPACE} > ${CLUSTER}/${EDB_CLUSTER_NAME}/status.txt
-        $KUBECTL cnp status ${EDB_CLUSTER_NAME} --verbose -n ${EDB_CLUSTER_NAMESPACE} > ${CLUSTER}/${EDB_CLUSTER_NAME}/status-verbose.txt
-    fi
+    $KUBECTL cnp status ${EDB_CLUSTER_NAME} -n ${EDB_CLUSTER_NAMESPACE} > ${CLUSTER}/${EDB_CLUSTER_NAME}/status.txt
+    $KUBECTL cnp status ${EDB_CLUSTER_NAME} --verbose -n ${EDB_CLUSTER_NAMESPACE} > ${CLUSTER}/${EDB_CLUSTER_NAME}/status-verbose.txt
+
     $KUBECTL get cluster -n ${EDB_CLUSTER_NAMESPACE} > ${CLUSTER}/${EDB_CLUSTER_NAME}/info.txt
     $KUBECTL get cluster -o yaml -n ${EDB_CLUSTER_NAMESPACE} > ${CLUSTER}/${EDB_CLUSTER_NAME}/cluster.yaml
     $KUBECTL describe cluster -n ${EDB_CLUSTER_NAMESPACE} > ${CLUSTER}/${EDB_CLUSTER_NAME}/describe.txt
@@ -103,9 +99,8 @@ function gatherClusterData() {
 }
 
 function gatherEDBPodData() {
-    if [ "$CNP_INSTALLED" = true ]; then
-      $KUBECTL cnp report cluster ${EDB_CLUSTER_NAME} --logs -n ${EDB_CLUSTER_NAMESPACE} -f ${SPECIFIC_NS_CLUSTER}/cluster-report.zip
-    fi
+    $KUBECTL cnp report cluster ${EDB_CLUSTER_NAME} --logs -n ${EDB_CLUSTER_NAMESPACE} -f ${SPECIFIC_NS_CLUSTER}/cluster-report.zip
+
     $KUBECTL get pod -l k8s.enterprisedb.io/cluster=${EDB_CLUSTER_NAME} -L role -n ${EDB_CLUSTER_NAMESPACE} > ${CLUSTER_PODS}/pods.txt
     for pod in ${EDB_POD_NAMES}; do
         mkdir ${CLUSTER_PODS}/${pod}

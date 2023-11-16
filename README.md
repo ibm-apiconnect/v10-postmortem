@@ -8,7 +8,7 @@ With the move to API Connect v10, **helm** is not longer used as part of the dep
 - While the postmortem collection script is running, it is expected that the CPU and I/O load for the APIC deployment and its host cluster/VM will be increased. 
 
 ## Pre-Requisite
-- If EDB is deployed you will need the kubectl-cnp [plugin](https://www.enterprisedb.com/docs/postgres_for_kubernetes/latest/cnp-plugin) to gather appropriate EDB logs
+- If EDB is deployed you will need the kubectl-cnp [plugin](https://www.enterprisedb.com/docs/postgres_for_kubernetes/latest/kubectl-plugin) to gather appropriate EDB logs
 
 ## Deployment Instructions
 ### OVA
