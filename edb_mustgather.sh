@@ -42,8 +42,8 @@ if [ "$ARCHITECTURE" = 's390x' ]; then
     EDB_OP_NAMESPACE='ibm-common-services'
     PG_OP=$($KUBECTL get po -n ${EDB_OP_NAMESPACE} -o=custom-columns=NAME:.metadata.name | grep postgresql-operator-controller-manager)
 else
-    EDB_OP_NAMESPACE=$($KUBECTL get po -A | grep edb-operator | awk -F ' ' '{print $1}' | head -n 1)
-    PG_OP=$($KUBECTL get po -n ${EDB_OP_NAMESPACE} -o=custom-columns=NAME:.metadata.name | grep edb-operator)
+    EDB_OP_NAMESPACE=$EDB_CLUSTER_NAMESPACE
+    PG_OP=$($KUBECTL get po -n ${EDB_OP_NAMESPACE} -o=custom-columns=NAME:.metadata.name | grep -e edb-operator -e postgresql-operator-controller-manager)
 fi
 
 EDB_CLUSTER_NAME=$($KUBECTL get cluster -n ${EDB_CLUSTER_NAMESPACE} -o=jsonpath='{.items[0].metadata.name}')
@@ -124,8 +124,7 @@ function gatherEDBBackupData() {
 
 
 if [[ -z "$PG_OP" ]]; then
-    echo "failed to find the edb operator in the ${EDB_OP_NAMESPACE} namespace"
-    exit 1
+    echo "failed to find the edb operator in the ${EDB_OP_NAMESPACE} namespace, could be in a different namespace"
 else
    gatherEdbOperatorData
 fi
