@@ -215,6 +215,14 @@ if [[ -z "$SPECIFIC_NAMESPACES" ]]; then
     SPECIFIC_NAMESPACES=0
 fi
 
+# Check whether the cluster is Openshift
+if $KUBECTL api-resources --no-headers --api-group=route.openshift.io 2>/dev/null | grep -q "route"; then
+    IS_OPENSHIFT=1
+    echo "Cluster is Openshift"
+else
+    IS_OPENSHIFT=0
+fi
+
 #====================================== Confirm pre-reqs and init variables ======================================
 #------------------------------- Make sure all necessary commands exists ------------------------------
 
@@ -292,7 +300,7 @@ echo -e "Generating postmortem, please wait..."
 mkdir -p $TEMP_PATH
 
 #determine if metrics is installed
-$KUBECTL get pods --all-namespaces 2>/dev/null | egrep -q "metrics-server|openshift-monitoring"
+$KUBECTL get pods --all-namespaces 2>/dev/null | grep -E -q "metrics-server|openshift-monitoring"
 OUTPUT_METRICS=$?
 
 #Namespaces
@@ -353,8 +361,8 @@ if [[ $IS_OVA -eq 1 ]]; then
     blkid /dev/sr0 1>>"${OVA_DATA}/disk_data.out" 2>/dev/null
     echo -e "\n> lsblk -fp" 1>>"${OVA_DATA}/disk_data.out" 2>/dev/null
     lsblk -fp 1>>"${OVA_DATA}/disk_data.out" 2>/dev/null
-    echo -e "\n>df -kh | egrep -v 'kubelet|docker'" 1>>"${OVA_DATA}/disk_data.out" 2>/dev/null
-    df -kh | egrep -v 'kubelet|docker' 1>>"${OVA_DATA}/disk_data.out" 2>/dev/null
+    echo -e "\n>df -kh | grep -E -v 'kubelet|docker'" 1>>"${OVA_DATA}/disk_data.out" 2>/dev/null
+    df -kh | grep -E -v 'kubelet|docker' 1>>"${OVA_DATA}/disk_data.out" 2>/dev/null
 
     #pull appliance logs
     if [[ $PULL_APPLIANCE_LOGS -eq 1 ]]; then
@@ -434,7 +442,7 @@ fi
 
 #============================================== autodetect namespaces ============================================
 if [[ $AUTO_DETECT -eq 1 ]]; then
-    NS_LISTING=`$KUBECTL get ns 2>/dev/null | sed -e '1d' | egrep -v "kube-system|cert-manager|rook|certmanager"`
+    NS_LISTING=`$KUBECTL get ns 2>/dev/null | sed -e '1d' | grep -E -v "kube-system|cert-manager|rook|certmanager"`
 
     SUBSYS_MANAGER="ISNOTSET"
     SUBSYS_ANALYTICS="ISNOTSET"
@@ -785,6 +793,15 @@ fi
 
 #Get api-resources
 $KUBECTL api-resources &> "${K8S_CLUSTER_LIST_DATA}/api-resources.out"
+
+#Get Openshift/OLM/CS specific resource overview accross namespaces
+if [[ $IS_OPENSHIFT -eq 1 ]]; then
+    OCP_RESOURCE_TYPES=(catalogsources installplans subscriptions csvs operandrequests)
+    for OCP_RESOURCE_TYPE in "${OCP_RESOURCE_TYPES[@]}"; do
+        $KUBECTL get $OCP_RESOURCE_TYPE -owide -A &> "${K8S_CLUSTER_LIST_DATA}/all-$OCP_RESOURCE_TYPE.out"
+    done
+fi
+
 #------------------------------------------------------------------------------------------------------
 
 #---------------------------------- collect namespace specific data -----------------------------------
@@ -964,7 +981,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
         echo "$OUTPUT" > $IR_OUTFILE
 
         #check if portal pods are available to use nslookup
-        OUTPUT1=`$KUBECTL get pods -n $NAMESPACE 2>/dev/null | egrep -v "up|downloads" | egrep "portal.*www|-apim-|-client-|-ui-" | head -n1`
+        OUTPUT1=`$KUBECTL get pods -n $NAMESPACE 2>/dev/null | grep -E -v "up|downloads" | grep -E "portal.*www|-apim-|-client-|-ui-" | head -n1`
         if [[ ${#OUTPUT1} -gt 0 ]]; then
             nslookup_pod=`echo "${OUTPUT1}" | awk '{print $1}'`
         fi
@@ -1422,7 +1439,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
 
                 #POST XML to gateway, start error report creation
                 admin_password="admin"
-                secret_name=`$KUBECTL get secrets -n $NAMESPACE | egrep 'admin-secret|gw-admin' | awk '{print $1}'`
+                secret_name=`$KUBECTL get secrets -n $NAMESPACE | grep -E 'admin-secret|gw-admin' | awk '{print $1}'`
                 if [[ ${#secret_name} -gt 0 ]]; then
                     admin_password=`$KUBECTL get secret $secret_name -o jsonpath='{.data.password}' | base64 -d`
                 fi
@@ -1723,7 +1740,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
 
                     mkdir -p $TRANSFORM_DIRECTORY
 
-                    LOG_FILES=`ls -1 $TARGET_DIRECTORY | egrep "${s}.*www.*${container}"`
+                    LOG_FILES=`ls -1 $TARGET_DIRECTORY | grep -E "${s}.*www.*${container}"`
                     grep . $LOG_FILES | sed 's/:\[/[ /' | sort -k5,6 >$INTERLACED_LOG_FILE
 
                     cd $tmpPortalPath
@@ -1739,7 +1756,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
                 INTERLACED_LOG_FILE="${TRANSFORM_DIRECTORY}/logs_interlaced.out"
                 mkdir -p $TRANSFORM_DIRECTORY
 
-                LOG_FILES=`ls -1 $TARGET_DIRECTORY | egrep "${SUBSYS_PORTAL}.*www.*${container}"`
+                LOG_FILES=`ls -1 $TARGET_DIRECTORY | grep -E "${SUBSYS_PORTAL}.*www.*${container}"`
                 grep . $LOG_FILES | sed 's/:\[/[ /' | sort -k5,6 >$INTERLACED_LOG_FILE
 
                 cd $TRANSFORM_DIRECTORY
@@ -1753,74 +1770,60 @@ for NAMESPACE in $NAMESPACE_LIST; do
         done
     fi
 
-#------------------------------------ Pull Data CP4i specific data ------------------------------------
-    if [[ "$NAMESPACE" == "ibm-common-services" ]]; then
-        ICS_NAMESPACE="${K8S_NAMESPACES}/ibm-common-services"
+#------------------------------------ Pull OCP specific data ------------------------------------
+    if [[ $IS_OPENSHIFT -eq 1 ]]; then
+        OCP_INSTALL_PLAN_DATA="${K8S_NAMESPACES_SPECIFIC}/install_plans"
+        OCP_INSTALL_PLAN_YAML_OUTPUT="${OCP_INSTALL_PLAN_DATA}/yaml"
 
-        ICS_INSTALL_PLAN_DATA="${ICS_NAMESPACE}/install_plans"
-        ICS_INSTALL_PLAN_DESCRIBE_DATA="${ICS_INSTALL_PLAN_DATA}/describe"
-        ICS_INSTALL_PLAN_YAML_OUTPUT="${ICS_INSTALL_PLAN_DATA}/yaml"
+        OCP_SUBSCRIPTION_DATA="${K8S_NAMESPACES_SPECIFIC}/subscriptions"
+        OCP_SUBSCRIPTION_YAML_OUTPUT="${OCP_SUBSCRIPTION_DATA}/yaml"
 
-        ICS_SUBSCRIPTION_DATA="${ICS_NAMESPACE}/subscriptions"
-        ICS_SUBSCRIPTION_DESCRIBE_DATA="${ICS_SUBSCRIPTION_DATA}/describe"
-        ICS_SUBSCRIPTION_YAML_OUTPUT="${ICS_SUBSCRIPTION_DATA}/yaml"
+        OCP_CLUSTER_SERVICE_VERSION_DATA="${K8S_NAMESPACES_SPECIFIC}/cluster_service_version"
+        OCP_CLUSTER_SERVICE_VERSION_YAML_OUTPUT="${OCP_CLUSTER_SERVICE_VERSION_DATA}/yaml"
 
-        ICS_CLUSTER_SERVICE_VERSION_DATA="${ICS_NAMESPACE}/cluster_service_version"
-        ICS_CLUSTER_SERVICE_VERSION_DESCRIBE_DATA="${ICS_CLUSTER_SERVICE_VERSION_DATA}/describe"
-        ICS_CLUSTER_SERVICE_VERSION_YAML_OUTPUT="${ICS_CLUSTER_SERVICE_VERSION_DATA}/yaml"
+        mkdir -p $OCP_INSTALL_PLAN_DESCRIBE_DATA
+        mkdir -p $OCP_INSTALL_PLAN_YAML_OUTPUT
 
-        mkdir -p $ICS_INSTALL_PLAN_DESCRIBE_DATA
-        mkdir -p $ICS_INSTALL_PLAN_YAML_OUTPUT
+        mkdir -p $OCP_SUBSCRIPTION_DESCRIBE_DATA
+        mkdir -p $OCP_SUBSCRIPTION_YAML_OUTPUT
 
-        mkdir -p $ICS_SUBSCRIPTION_DESCRIBE_DATA
-        mkdir -p $ICS_SUBSCRIPTION_YAML_OUTPUT
-
-        mkdir -p $ICS_CLUSTER_SERVICE_VERSION_DESCRIBE_DATA
-        mkdir -p $ICS_CLUSTER_SERVICE_VERSION_YAML_OUTPUT
+        mkdir -p $OCP_CLUSTER_SERVICE_VERSION_DESCRIBE_DATA
+        mkdir -p $OCP_CLUSTER_SERVICE_VERSION_YAML_OUTPUT
 
         OUTPUT=`$KUBECTL get InstallPlan -n $NAMESPACE 2>/dev/null`
         if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
-            echo "$OUTPUT" > "${ICS_INSTALL_PLAN_DATA}/install_plans.out"
+            echo "$OUTPUT" > "${OCP_INSTALL_PLAN_DATA}/install_plans.out"
             while read line; do
                 ip=`echo "$line" | cut -d' ' -f1`
-                $KUBECTL describe InstallPlan $ip -n $NAMESPACE &>"${ICS_INSTALL_PLAN_DESCRIBE_DATA}/${ip}.out"
-                [ $? -eq 0 ] || rm -f "${ICS_INSTALL_PLAN_DESCRIBE_DATA}/${ip}.out"
-
-                $KUBECTL get InstallPlan $ip -o yaml -n $NAMESPACE &>"${ICS_INSTALL_PLAN_YAML_OUTPUT}/${ip}.out"
-                [ $? -eq 0 ] || rm -f "${ICS_INSTALL_PLAN_YAML_OUTPUT}/${ip}.out"
+                $KUBECTL get InstallPlan $ip -o yaml -n $NAMESPACE &>"${OCP_INSTALL_PLAN_YAML_OUTPUT}/${ip}.yaml"
+                [ $? -eq 0 ] || rm -f "${OCP_INSTALL_PLAN_YAML_OUTPUT}/${ip}.yaml"
             done <<< "$OUTPUT"
         else
-            rm -fr $ICS_INSTALL_PLAN_DATA
+            rm -fr $OCP_INSTALL_PLAN_DATA
         fi
 
         OUTPUT=`$KUBECTL get Subscription -n $NAMESPACE 2>/dev/null`
         if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
-            echo "$OUTPUT" > "${ICS_SUBSCRIPTION_DATA}/subscriptions.out"
+            echo "$OUTPUT" > "${OCP_SUBSCRIPTION_DATA}/subscriptions.out"
             while read line; do
                 sub=`echo "$line" | cut -d' ' -f1`
-                $KUBECTL describe Subscription $sub -n $NAMESPACE &>"${ICS_SUBSCRIPTION_DESCRIBE_DATA}/${sub}.out"
-                [ $? -eq 0 ] || rm -f "${ICS_SUBSCRIPTION_DESCRIBE_DATA}/${sub}.out"
-
-                $KUBECTL get Subscription $sub -o yaml -n $NAMESPACE &>"${ICS_SUBSCRIPTION_YAML_OUTPUT}/${sub}.out"
-                [ $? -eq 0 ] || rm -f "${ICS_SUBSCRIPTION_YAML_OUTPUT}/${sub}.out"
+                $KUBECTL get Subscription $sub -o yaml -n $NAMESPACE &>"${OCP_SUBSCRIPTION_YAML_OUTPUT}/${sub}.yaml"
+                [ $? -eq 0 ] || rm -f "${OCP_SUBSCRIPTION_YAML_OUTPUT}/${sub}.yaml"
             done <<< "$OUTPUT"
         else
-            rm -fr $ICS_INSTALL_PLAN_DATA
+            rm -fr $OCP_INSTALL_PLAN_DATA
         fi
 
         OUTPUT=`$KUBECTL get ClusterServiceVersion -n $NAMESPACE 2>/dev/null`
         if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
-            echo "$OUTPUT" > "${ICS_CLUSTER_SERVICE_VERSION_DATA}/cluster_service_version.out"
+            echo "$OUTPUT" > "${OCP_CLUSTER_SERVICE_VERSION_DATA}/cluster_service_version.out"
             while read line; do
                 csv=`echo "$line" | cut -d' ' -f1`
-                $KUBECTL describe ClusterServiceVersion $csv -n $NAMESPACE &>"${ICS_CLUSTER_SERVICE_VERSION_DESCRIBE_DATA}/${csv}.out"
-                [ $? -eq 0 ] || rm -f "${ICS_CLUSTER_SERVICE_VERSION_DESCRIBE_DATA}/${csv}.out"
-
-                $KUBECTL get ClusterServiceVersion $csv -o yaml -n $NAMESPACE &>"${ICS_CLUSTER_SERVICE_VERSION_YAML_OUTPUT}/${csv}.out"
-                [ $? -eq 0 ] || rm -f "${ICS_CLUSTER_SERVICE_VERSION_YAML_OUTPUT}/${csv}.out"
+                $KUBECTL get ClusterServiceVersion $csv -o yaml -n $NAMESPACE &>"${OCP_CLUSTER_SERVICE_VERSION_YAML_OUTPUT}/${csv}.yaml"
+                [ $? -eq 0 ] || rm -f "${OCP_CLUSTER_SERVICE_VERSION_YAML_OUTPUT}/${csv}.yaml"
             done <<< "$OUTPUT"
         else
-            rm -fr $ICS_INSTALL_PLAN_DATA
+            rm -fr $OCP_INSTALL_PLAN_DATA
         fi
     fi
 #------------------------------------------------------------------------------------------------------
