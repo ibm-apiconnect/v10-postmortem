@@ -10,7 +10,7 @@ if [[ $? -eq 0 ]]; then
 else
     which kubectl &> /dev/null
     if [[ $? -ne 0 ]]; then
-        echo "Unable to locate the command [kubectl] nor [oc] in the path.  Either install or add it to the path.  EXITING..."
+        echo "Unable to locate the command [kubectl] nor [oc] in the path.  Either install or add it to your PATH.  EXITING..."
         exit 1
     fi
     KUBECTL="kubectl"
@@ -22,7 +22,7 @@ LOG_PATH=$2
 if which kubectl-cnp >/dev/null; then
     echo kubectl-cnp plugin found
 else
-    echo kubectl-cnp plugin not found, please install it from here https://www.enterprisedb.com/docs/postgres_for_kubernetes/latest/kubectl-plugin
+    echo kubectl-cnp plugin not found, please install it and add it to your PATH, see https://www.enterprisedb.com/docs/postgres_for_kubernetes/latest/kubectl-plugin
     exit 1
 fi
 

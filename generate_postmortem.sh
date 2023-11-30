@@ -181,7 +181,7 @@ for switch in $@; do
             if which kubectl-cnp >/dev/null; then
                 echo kubectl-cnp plugin found
             else
-                echo -e "kubectl-cnp plugin not found, please install it from here https://www.enterprisedb.com/docs/postgres_for_kubernetes/latest/kubectl-plugin.  Exiting..."
+                echo -e "kubectl-cnp plugin not found, please install it and add it to your PATH, see https://www.enterprisedb.com/docs/postgres_for_kubernetes/latest/kubectl-plugin.  Exiting..."
                 exit 1
             fi
 
