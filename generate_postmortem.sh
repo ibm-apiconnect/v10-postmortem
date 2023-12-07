@@ -98,7 +98,7 @@ for switch in $@; do
 
             IS_OVA=1
             NO_PROMPT=1
-            NAMESPACE_LIST="kube-system default"
+            NAMESPACE_LIST="kube-system"
             ;;
         *"--diagnostic-all"*)
             DIAG_MANAGER=1
