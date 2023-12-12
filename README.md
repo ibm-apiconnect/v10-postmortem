@@ -40,9 +40,10 @@ Enable the following if troubleshooting an issue for the following subsystems:
 - `--diagnostic-all`
 ### Manager
 - `--diagnostic-manager`
-- `--collect-crunchy`
-- `--collect-edb`<br />
+> **Note**: To use this option make sure to download either the `crunchy_gather.py` script or the `edb_mustgather.py` script, and make it executable with `chmod +x <mustgather_scipt>` and place in the same directory as the postmortem script.
+- `--collect-crunchy`<br />
 > **Note**: To use this option make sure to download the `crunchy_gather.py` script, make it executable with `chmod +x crunchy_gather.py` and place in the same directory as the postmortem script. 
+- `--collect-edb`<br />
 > **Note**: To use this option make sure to download the `edb_mustgather.py` script, make it executable with `chmod +x edb_mustgather.py` and place in the same directory as the postmortem script.
 ### Gateway
 `--diagnostic-gateway`
