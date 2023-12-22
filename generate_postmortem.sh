@@ -114,6 +114,14 @@ for switch in $@; do
                 SCRIPT_LOCATION="`pwd`/crunchy_gather.py"
             else
                 COLLECT_EDB=1
+
+                if which kubectl-cnp >/dev/null; then
+                    echo kubectl-cnp plugin found
+                else
+                    echo -e "kubectl-cnp plugin not found, please install it and add it to your PATH, see https://www.enterprisedb.com/docs/postgres_for_kubernetes/latest/kubectl-plugin.  Exiting..."
+                    exit 1
+                fi
+
                 SCRIPT_LOCATION="`pwd`/edb_mustgather.sh"
             fi
             if [[ ! -f $SCRIPT_LOCATION ]]; then
@@ -458,7 +466,8 @@ if [[ $AUTO_DETECT -eq 1 ]]; then
     SUBSYS_GATEWAY_V6_COUNT=0
     SUBSYS_EVENT_COUNT=0
 
-    CLUSTER_LIST=(ManagementCluster AnalyticsCluster PortalCluster GatewayCluster EventEndpointManager EventGatewayCluster)
+#    CLUSTER_LIST=(ManagementCluster AnalyticsCluster PortalCluster GatewayCluster EventEndpointManager EventGatewayCluster)
+    CLUSTER_LIST=(ManagementCluster)
     EVENT_PREFIX="eventendpo"
     ns_matches=""
 
@@ -1323,6 +1332,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
 
             #grab postgres data
             if [[ $DIAG_MANAGER -eq 1 && "$status" == "Running" && "$pod" == *"postgres"* && ! "$pod" =~ (backrest|pgbouncer|stanza|operator) ]]; then
+                echo "Collect old pg data"
                 target_dir="${K8S_NAMESPACES_POD_DIAGNOSTIC_DATA}/postgres/${pod}-pglogs"
                 health_dir="${K8S_NAMESPACES_POD_DIAGNOSTIC_DATA}/postgres/${pod}-health-stats"
 

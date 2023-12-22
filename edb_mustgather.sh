@@ -46,7 +46,8 @@ else
     PG_OP=$($KUBECTL get po -n ${EDB_OP_NAMESPACE} -o=custom-columns=NAME:.metadata.name | grep -e edb-operator -e postgresql-operator-controller-manager)
 fi
 
-EDB_CLUSTER_NAME=$($KUBECTL get cluster -n ${EDB_CLUSTER_NAMESPACE} -o=jsonpath='{.items[0].metadata.name}')
+MGMT_CR_NAME=$($KUBECTL get mgmt -n ${EDB_CLUSTER_NAMESPACE} -o=jsonpath='{.items[0].metadata.name}')
+EDB_CLUSTER_NAME=$($KUBECTL get cluster -n ${EDB_CLUSTER_NAMESPACE} -o=jsonpath='{.items[?(@.metadata.ownerReferences[0].name=="'${MGMT_CR_NAME}'")].metadata.name}')
 EDB_POD_NAMES=$($KUBECTL get pod -l k8s.enterprisedb.io/cluster=${EDB_CLUSTER_NAME} -L role -n ${EDB_CLUSTER_NAMESPACE} -o=custom-columns=NAME:.metadata.name --no-headers)
 EDB_BACKUP_NAMES=$($KUBECTL get backups -l k8s.enterprisedb.io/cluster=${EDB_CLUSTER_NAME} -L role -n ${EDB_CLUSTER_NAMESPACE} -o=custom-columns=NAME:.metadata.name --no-headers)
 K8S_DATA="${TEMP_PATH}/kubernetes"
