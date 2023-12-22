@@ -466,8 +466,7 @@ if [[ $AUTO_DETECT -eq 1 ]]; then
     SUBSYS_GATEWAY_V6_COUNT=0
     SUBSYS_EVENT_COUNT=0
 
-#    CLUSTER_LIST=(ManagementCluster AnalyticsCluster PortalCluster GatewayCluster EventEndpointManager EventGatewayCluster)
-    CLUSTER_LIST=(ManagementCluster)
+    CLUSTER_LIST=(ManagementCluster AnalyticsCluster PortalCluster GatewayCluster EventEndpointManager EventGatewayCluster)
     EVENT_PREFIX="eventendpo"
     ns_matches=""
 
@@ -1332,7 +1331,6 @@ for NAMESPACE in $NAMESPACE_LIST; do
 
             #grab postgres data
             if [[ $DIAG_MANAGER -eq 1 && "$status" == "Running" && "$pod" == *"postgres"* && ! "$pod" =~ (backrest|pgbouncer|stanza|operator) ]]; then
-                echo "Collect old pg data"
                 target_dir="${K8S_NAMESPACES_POD_DIAGNOSTIC_DATA}/postgres/${pod}-pglogs"
                 health_dir="${K8S_NAMESPACES_POD_DIAGNOSTIC_DATA}/postgres/${pod}-health-stats"
 
