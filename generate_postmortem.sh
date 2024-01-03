@@ -114,6 +114,14 @@ for switch in $@; do
                 SCRIPT_LOCATION="`pwd`/crunchy_gather.py"
             else
                 COLLECT_EDB=1
+
+                if which kubectl-cnp >/dev/null; then
+                    echo kubectl-cnp plugin found
+                else
+                    echo -e "kubectl-cnp plugin not found, please install it and add it to your PATH, see https://www.enterprisedb.com/docs/postgres_for_kubernetes/latest/kubectl-plugin.  Exiting..."
+                    exit 1
+                fi
+
                 SCRIPT_LOCATION="`pwd`/edb_mustgather.sh"
             fi
             if [[ ! -f $SCRIPT_LOCATION ]]; then
