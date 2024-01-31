@@ -832,7 +832,7 @@ else
     OUTPUT=`apicops upgrade:check-postgres-leader 2>/dev/null`
     if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
        echo "$OUTPUT" > "${K8S_CLUSTER_APICOPS_HEALTH_CHECK}/upgrade:check-postgres-leader.out"
-   fi
+    fi
 fi
 #------------------------------------------------------------------------------------------------------
 
