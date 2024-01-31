@@ -607,6 +607,8 @@ K8S_CLUSTER_VALIDATINGWEBHOOK_YAML_OUTPUT="${K8S_CLUSTER_VALIDATINGWEBHOOK_CONFI
 K8S_CLUSTER_MUTATINGWEBHOOK_CONFIGURATIONS="${K8S_CLUSTER}/mutatingwebhookconfigurations"
 K8S_CLUSTER_MUTATINGWEBHOOK_YAML_OUTPUT="${K8S_CLUSTER_MUTATINGWEBHOOK_CONFIGURATIONS}/yaml"
 
+K8S_CLUSTER_APICOPS="${K8S_CLUSTER}/apicops"
+K8S_CLUSTER_APICOPS_HEALTH_CHECK="${K8S_CLUSTER_APICOPS}/healthcheck"
 
 mkdir -p $K8S_VERSION
 
@@ -625,6 +627,7 @@ mkdir -p $K8S_CLUSTER_VALIDATINGWEBHOOK_YAML_OUTPUT
 
 mkdir -p $K8S_CLUSTER_MUTATINGWEBHOOK_YAML_OUTPUT
 
+mkdir -p $K8S_CLUSTER_APICOPS_HEALTH_CHECK
 #------------------------------------------------------------------------------------------------------
 
 #grab kubernetes version
@@ -804,6 +807,33 @@ fi
 
 #Get api-resources
 $KUBECTL api-resources &> "${K8S_CLUSTER_LIST_DATA}/api-resources.out"
+
+#APICOPS HEALTH CHECK DATA 
+APICOPS_WHICH_COMMAND=`which apicops`
+if [[ ! ${#APICOPS_WHICH_COMMAND} -gt 0 ]]; then
+    echo -e "Unable to locate the command apicops in the path. Please install it and add it to the PATH. See: https://github.com/ibm-apiconnect/apicops?tab=readme-ov-file"
+else
+    OUTPUT=`apicops upgrade:pg-health-check 2>/dev/null`
+    if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
+        echo "$OUTPUT" > "${K8S_CLUSTER_APICOPS_HEALTH_CHECK}/upgrade:pg-health-check.out"
+    fi
+    OUTPUT=`apicops upgrade:check-subsystem-status 2>/dev/null`
+    if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
+        echo "$OUTPUT" > "${K8S_CLUSTER_APICOPS_HEALTH_CHECK}/upgrade:check-subsystem-status.out"
+    fi
+    OUTPUT=`apicops upgrade:stale-certs 2>/dev/null`
+    if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
+        echo "$OUTPUT" > "${K8S_CLUSTER_APICOPS_HEALTH_CHECK}/upgrade:stale-certs.out"
+    fi
+    OUTPUT=`apicops upgrade:check-pvc 2>/dev/null`
+    if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
+        echo "$OUTPUT" > "${K8S_CLUSTER_APICOPS_HEALTH_CHECK}/upgrade:check-pvc.out"
+    fi
+    OUTPUT=`apicops upgrade:check-postgres-leader 2>/dev/null`
+    if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
+       echo "$OUTPUT" > "${K8S_CLUSTER_APICOPS_HEALTH_CHECK}/upgrade:check-postgres-leader.out"
+   fi
+fi
 #------------------------------------------------------------------------------------------------------
 
 #---------------------------------- collect namespace specific data -----------------------------------
