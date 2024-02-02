@@ -64,6 +64,7 @@ OPERATOR_PODS=${SPECIFIC_NS_EDB_OP}/pods
 CLUSTER=${SPECIFIC_NS_CLUSTER}/cluster
 CLUSTER_PODS=${SPECIFIC_NS_CLUSTER}/pods
 CLUSTER_BACKUPS=${SPECIFIC_NS_CLUSTER}/backups
+CLUSTER_SCHEDULED_BACKUPS=${SPECIFIC_NS_CLUSTER}/scheduledbackups
 
 
 mkdir ${NS}
@@ -75,6 +76,8 @@ mkdir ${CLUSTER}/${EDB_CLUSTER_NAME}
 mkdir -p ${CLUSTER_PODS}
 mkdir ${CLUSTER_BACKUPS}
 mkdir ${CLUSTER_BACKUPS}/${EDB_CLUSTER_NAME}
+mkdir ${CLUSTER_SCHEDULED_BACKUPS}
+mkdir ${CLUSTER_SCHEDULED_BACKUPS}/${EDB_CLUSTER_NAME}
 
 function gatherEdbOperatorData() {
     $KUBECTL cnp report operator --logs -n ${EDB_OP_NAMESPACE} -f ${SPECIFIC_NS_EDB_OP}/operator-report.zip
@@ -93,9 +96,9 @@ function gatherClusterData() {
     $KUBECTL cnp status ${EDB_CLUSTER_NAME} -n ${EDB_CLUSTER_NAMESPACE} > ${CLUSTER}/${EDB_CLUSTER_NAME}/status.txt
     $KUBECTL cnp status ${EDB_CLUSTER_NAME} --verbose -n ${EDB_CLUSTER_NAMESPACE} > ${CLUSTER}/${EDB_CLUSTER_NAME}/status-verbose.txt
 
-    $KUBECTL get cluster -n ${EDB_CLUSTER_NAMESPACE} > ${CLUSTER}/${EDB_CLUSTER_NAME}/info.txt
-    $KUBECTL get cluster -o yaml -n ${EDB_CLUSTER_NAMESPACE} > ${CLUSTER}/${EDB_CLUSTER_NAME}/cluster.yaml
-    $KUBECTL describe cluster -n ${EDB_CLUSTER_NAMESPACE} > ${CLUSTER}/${EDB_CLUSTER_NAME}/describe.txt
+    $KUBECTL get cluster ${EDB_CLUSTER_NAME} -n ${EDB_CLUSTER_NAMESPACE} > ${CLUSTER}/${EDB_CLUSTER_NAME}/info.txt
+    $KUBECTL get cluster ${EDB_CLUSTER_NAME} -o yaml -n ${EDB_CLUSTER_NAMESPACE} > ${CLUSTER}/${EDB_CLUSTER_NAME}/cluster.yaml
+    $KUBECTL describe cluster ${EDB_CLUSTER_NAME} -n ${EDB_CLUSTER_NAMESPACE} > ${CLUSTER}/${EDB_CLUSTER_NAME}/describe.txt
 
 }
 
@@ -114,11 +117,20 @@ function gatherEDBPodData() {
 }
 
 function gatherEDBBackupData() {
-    $KUBECTL get backups -n ${EDB_CLUSTER_NAMESPACE} > ${CLUSTER_BACKUPS}/${EDB_CLUSTER_NAME}/backups.txt
+    $KUBECTL get backups -n ${EDB_CLUSTER_NAMESPACE} -o=jsonpath='{.items[?(@.spec.cluster.name=="'${EDB_CLUSTER_NAME}'")]}' -o wide > ${CLUSTER_BACKUPS}/${EDB_CLUSTER_NAME}/backups.txt
     for backup in ${EDB_BACKUP_NAMES}; do
         mkdir ${CLUSTER_BACKUPS}/${EDB_CLUSTER_NAME}/${backup}
         $KUBECTL get backups ${backup} -o yaml -n ${EDB_CLUSTER_NAMESPACE} > ${CLUSTER_BACKUPS}/${EDB_CLUSTER_NAME}/${backup}/backup.yaml
         $KUBECTL describe backups ${backup} -n ${EDB_CLUSTER_NAMESPACE} > ${CLUSTER_BACKUPS}/${EDB_CLUSTER_NAME}/${backup}/describe.txt
+    done
+}
+
+function gatherEDBScheduledBackupData() {
+    $KUBECTL -n ${EDB_CLUSTER_NAMESPACE} get scheduledbackups -o=jsonpath='{.items[?(@.spec.cluster.name=="'${EDB_CLUSTER_NAME}'")]}' -o wide > ${CLUSTER_SCHEDULED_BACKUPS}/${EDB_CLUSTER_NAME}/scheduledbackups.txt
+    for scheduledbackup in ${EDB_SCHEDULED_BACKUP_NAMES}; do
+        mkdir ${CLUSTER_SCHEDULED_BACKUPS}/${EDB_CLUSTER_NAME}/${scheduledbackup}
+        $KUBECTL -n ${EDB_CLUSTER_NAMESPACE} get scheduledbackups ${scheduledbackup} -o yaml > ${CLUSTER_SCHEDULED_BACKUPS}/${EDB_CLUSTER_NAME}/${scheduledbackup}/backup.yaml
+        $KUBECTL -n ${EDB_CLUSTER_NAMESPACE} describe scheduledbackups ${scheduledbackup} > ${CLUSTER_SCHEDULED_BACKUPS}/${EDB_CLUSTER_NAME}/${scheduledbackup}/describe.txt
     done
 }
 
@@ -148,4 +160,10 @@ if [[ -z "$EDB_BACKUP_NAMES" ]]; then
     echo "failed to find the edb cluster backups in the ${EDB_CLUSTER_NAMESPACE} namespace"
 else
    gatherEDBBackupData
+fi
+
+if [[ -z "$EDB_SCHEDULED_BACKUP_NAMES" ]]; then
+    echo "failed to find the edb cluster scheduledBackups in the ${EDB_CLUSTER_NAMESPACE} namespace"
+else
+   gatherEDBScheduledBackupData
 fi
