@@ -19,12 +19,29 @@ fi
 EDB_CLUSTER_NAMESPACE=$1
 LOG_PATH=$2
 
-if which kubectl-cnp >/dev/null; then
-    echo kubectl-cnp plugin found
-else
-    echo kubectl-cnp plugin not found, please install it and add it to your PATH, see https://www.enterprisedb.com/docs/postgres_for_kubernetes/latest/kubectl-plugin
-    exit 1
-fi
+  if which kubectl-cnp >/dev/null; then
+      echo kubectl-cnp plugin found
+  else
+      echo -e "kubectl-cnp plugin not found"
+      read -p "Download and Install kubectl-cnp plugin (y/n)? " yn
+      case $yn in
+          [Yy]* )
+              echo -e "Proceeding..."
+              echo -e "Executing: curl -sSfL https://github.com/EnterpriseDB/kubectl-cnp/raw/main/install.sh | sudo sh -s -- -b /usr/local/bin"
+              curl -sSfL \
+                  https://github.com/EnterpriseDB/kubectl-cnp/raw/main/install.sh | \
+                  sudo sh -s -- -b /usr/local/bin
+              if [[ $? -ne 0 ]]; then
+                  echo "Error installing kubectl-cnp plugin. Exiting..."
+                  exit 1
+              fi
+              ;;
+          [Nn]* )
+              echo -e "Exiting... please install kubectl-cnp plugin and add it to your PATH, see https://www.enterprisedb.com/docs/postgres_for_kubernetes/latest/kubectl-plugin."
+              exit 1
+              ;;
+      esac
+  fi
 
 if [ -z "$1" ] || [ -z "$2" ]
   then
