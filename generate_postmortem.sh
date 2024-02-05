@@ -808,11 +808,71 @@ fi
 #Get api-resources
 $KUBECTL api-resources &> "${K8S_CLUSTER_LIST_DATA}/api-resources.out"
 
+#--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 #APICOPS HEALTH CHECK DATA 
+
+download_latest_apicops_macOS(){
+    curl -L -o apicops https://github.com/ibm-apiconnect/apicops/releases/download/v0.10.66/apicops-v10-macos
+    chmod +x apicops
+    HOLDING_PWD=`pwd`
+    export PATH=$PATH:"$HOLDING_PWD"
+}
+
+download_latest_apicops_linux(){
+    curl -L -o apicops https://github.com/ibm-apiconnect/apicops/releases/download/v0.10.66/apicops-v10-linux
+    chmod +x apicops
+    HOLDING_PWD=`pwd`
+    export PATH=$PATH:"$HOLDING_PWD"
+}
+
+check_OS_download_apicops(){
+     if [ "$OS_TYPE" = 'Darwin' ]; then 
+        download_latest_apicops_macOS
+    elif [ "$OS_TYPE" = 'Linux' ]; then
+        download_latest_apicops_linux
+    fi
+}
+
+
+#Detecting the users operating system 
+#add check for OS, and set a variable so it can be used again later to simplify things
+OS_TYPE=`uname`
 APICOPS_WHICH_COMMAND=`which apicops`
-if [[ ! ${#APICOPS_WHICH_COMMAND} -gt 0 ]]; then
-    echo -e "Unable to locate the command apicops in the path. Please install it and add it to the PATH. See: https://github.com/ibm-apiconnect/apicops?tab=readme-ov-file"
-else
+APICOPS_CURRENT_DIRECTORY="`pwd`/apicops"
+REMOTE_APICOPS_CHECKSUM_MACOS=$(curl -sL https://github.com/ibm-apiconnect/apicops/releases/download/v0.10.66/apicops-v10-macos|sha256sum | cut -d' ' -f1)
+REMOTE_APICOPS_CHECKSUM_LINUX=$(curl -sL https://github.com/ibm-apiconnect/apicops/releases/download/v0.10.66/apicops-v10-linux|sha256sum | cut -d' ' -f1)
+if [[ ! ${#APICOPS_WHICH_COMMAND} -gt 0 ]] && [[ ! -e $APICOPS_CURRENT_DIRECTORY ]]; then
+    echo -e "Unable to locate the command apicops in the path. Downloading From: https://github.com/ibm-apiconnect/apicops?tab=readme-ov-file"
+    check_OS_download_apicops
+else 
+    if [[ -e $APICOPS_CURRENT_DIRECTORY ]]; then
+        echo "found in the directory" 
+        echo "Checking to see if this is the most up to date version"
+        LOCAL_APICOPS_CHECKSUM=$(sha256sum apicops | cut -d' ' -f1)
+        #change this to check for both OS systems
+        if [[ "$LOCAL_APICOPS_CHECKSUM" = "$REMOTE_APICOPS_CHECKSUM_MACOS" ]]; then 
+            echo "adding to PATH"
+            HOLDING_PWD=`pwd`
+            export PATH=$PATH:"$HOLDING_PWD" 
+            echo "$PATH"
+            OUTPUT=`apicops upgrade:pg-health-check 2>/dev/null`
+            echo "$OUTPUT"
+        else
+            #if they dont match, based on the OS download the latest version
+            echo "needs update" 
+            check_OS_download_apicops
+        fi
+    elif [[ ${#APICOPS_WHICH_COMMAND} -gt 0 ]]; then
+        echo "found via which command"
+        LOCAL_APICOPS_CHECKSUM=$(sha256sum $APICOPS_WHICH_COMMAND | cut -d' ' -f1)
+        if [[ "$LOCAL_APICOPS_CHECKSUM" != "$REMOTE_APICOPS_CHECKSUM_MACOS" ]] && [[ "$LOCAL_APICOPS_CHECKSUM" != "$REMOTE_APICOPS_CHECKSUM_LINUX" ]]; then 
+            echo "needs update" 
+            check_OS_download_apicops
+        fi
+    fi
+fi
+if [[ ${#APICOPS_WHICH_COMMAND} -gt 0 ]]; then
+    echo "here"
     OUTPUT=`apicops upgrade:pg-health-check 2>/dev/null`
     if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
         echo "$OUTPUT" > "${K8S_CLUSTER_APICOPS_HEALTH_CHECK}/upgrade:pg-health-check.out"
