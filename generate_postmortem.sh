@@ -854,9 +854,7 @@ else
             echo "adding to PATH"
             HOLDING_PWD=`pwd`
             export PATH=$PATH:"$HOLDING_PWD" 
-            echo "$PATH"
-            OUTPUT=`apicops upgrade:pg-health-check 2>/dev/null`
-            echo "$OUTPUT"
+            #Error happening here, it never gets to the commands after this case
         else
             #if they dont match, based on the OS download the latest version
             echo "needs update" 
