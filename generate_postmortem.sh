@@ -809,15 +809,16 @@ fi
 $KUBECTL api-resources &> "${K8S_CLUSTER_LIST_DATA}/api-resources.out"
 
 #----------------------------------- collect apicops specific data ------------------------------------
+APICOPS_VERSION="v0.10.66"
 download_latest_apicops_macOS(){
-    curl -L -o apicops https://github.com/ibm-apiconnect/apicops/releases/download/v0.10.66/apicops-v10-macos
+    curl -L -o apicops https://github.com/ibm-apiconnect/apicops/releases/download/$APICOPS_VERSION/apicops-v10-macos
     chmod +x apicops
     HOLDING_PWD=`pwd`
     export PATH=$PATH:"$HOLDING_PWD"
 }
 
 download_latest_apicops_linux(){
-    curl -L -o apicops https://github.com/ibm-apiconnect/apicops/releases/download/v0.10.66/apicops-v10-linux
+    curl -L -o apicops https://github.com/ibm-apiconnect/apicops/releases/download/$APICOPS_VERSION/apicops-v10-linux
     chmod +x apicops
     HOLDING_PWD=`pwd`
     export PATH=$PATH:"$HOLDING_PWD"
@@ -834,8 +835,8 @@ check_OS_download_apicops(){
 OS_TYPE=`uname`
 APICOPS_WHICH_COMMAND=`which apicops`
 APICOPS_CURRENT_DIRECTORY="`pwd`/apicops"
-REMOTE_APICOPS_CHECKSUM_MACOS=$(curl -sL https://github.com/ibm-apiconnect/apicops/releases/download/v0.10.66/apicops-v10-macos|sha256sum | cut -d' ' -f1)
-REMOTE_APICOPS_CHECKSUM_LINUX=$(curl -sL https://github.com/ibm-apiconnect/apicops/releases/download/v0.10.66/apicops-v10-linux|sha256sum | cut -d' ' -f1)
+REMOTE_APICOPS_CHECKSUM_MACOS=$(curl -sL https://github.com/ibm-apiconnect/apicops/releases/download/$APICOPS_VERSION/apicops-v10-macos|sha256sum | cut -d' ' -f1)
+REMOTE_APICOPS_CHECKSUM_LINUX=$(curl -sL https://github.com/ibm-apiconnect/apicops/releases/download/$APICOPS_VERSION/apicops-v10-linux|sha256sum | cut -d' ' -f1)
 if [[ -z "$APICOPS_WHICH_COMMAND" ]] && [[ ! -e $APICOPS_CURRENT_DIRECTORY ]]; then
     echo -e "Unable to locate the command apicops in the PATH. Downloading From: https://github.com/ibm-apiconnect/apicops?tab=readme-ov-file"
     check_OS_download_apicops
