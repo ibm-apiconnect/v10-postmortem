@@ -1348,7 +1348,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
             fi
 
             #grab postgres data
-            if [[ $DIAG_MANAGER -eq 1 && "$status" == "Running" && "$pod" == *"postgres"* && ! "$pod" =~ (backrest|pgbouncer|stanza|operator) ]]; then
+            if [[ $DIAG_MANAGER -eq 1 && $COLLECT_CRUNCHY -eq 1 && "$status" == "Running" && "$pod" == *"postgres"* && ! "$pod" =~ (backrest|pgbouncer|stanza|operator) ]]; then
                 target_dir="${K8S_NAMESPACES_POD_DIAGNOSTIC_DATA}/postgres/${pod}-pglogs"
                 health_dir="${K8S_NAMESPACES_POD_DIAGNOSTIC_DATA}/postgres/${pod}-health-stats"
 
