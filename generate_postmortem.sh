@@ -1098,6 +1098,14 @@ for NAMESPACE in $NAMESPACE_LIST; do
         $CURRENT_PATH/edb_mustgather.sh $NAMESPACE $K8S_NAMESPACES_EDB &> "${K8S_NAMESPACES_EDB}/edb-collect.log"
     fi
 
+    #grab apicops mustgather
+    MGMT=$(kubectl get mgmt -n $NAMESPACE 2>&1)
+    if [[ $MGMT != *"No resources found"* ]]; then
+        K8S_NAMESPACES_APICOPS_DATA="${K8S_NAMESPACES_SPECIFIC}/apicops"
+        mkdir -p $K8S_NAMESPACES_APICOPS_DATA
+        $CURRENT_PATH/apicops_mustgather.sh $K8S_NAMESPACES_APICOPS_DATA $NAMESPACE
+    fi
+    
     #grab daemonset data
     OUTPUT=`$KUBECTL get daemonset -n $NAMESPACE 2>/dev/null`
     if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
