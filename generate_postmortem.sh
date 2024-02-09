@@ -1523,7 +1523,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
                 for COMMAND in "${BACKREST_COMMANDS[@]}"; do
                     COMMAND="${!COMMAND}"
                     echo -e "\nExecuting Command: $COMMAND" >> $target_dir/backrest-repo-details.out
-                    OUTPUT=$(kubectl exec -i management-d9880c3a-postgres-backrest-shared-repo-7984d69bchm9p -- $COMMAND)
+                    OUTPUT=$($KUBECTL -n $NAMESPACE exec -i $pod -- $COMMAND  2>/dev/null </dev/null)
                     echo -e "$OUTPUT\n" >> $target_dir/backrest-repo-details.out
                 done
             fi
