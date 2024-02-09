@@ -1501,6 +1501,33 @@ for NAMESPACE in $NAMESPACE_LIST; do
 
             fi
 
+            PG_BACKREST_REPO_POD=$($KUBECTL -n "$NAMESPACE" get po -lpgo-backrest-repo=true,vendor=crunchydata -o=custom-columns=NAME:.metadata.name --no-headers)
+            if [[ $DIAG_MANAGER -eq 1 && $COLLECT_CRUNCHY -eq 1 && "$status" == "Running" && "$pod" == "$PG_BACKREST_REPO_POD" ]]; then
+                target_dir="${K8S_NAMESPACES_POD_DIAGNOSTIC_DATA}/postgres/${pod}"
+                mkdir -p "$target_dir"
+
+                pg_cluster=$(kubectl get pgcluster -o=custom-columns=NAME:.metadata.name --no-headers)
+
+                COMMAND1="pgbackrest info"
+                COMMAND2="du -ksh /backrestrepo/$pg_cluster-backrest-shared-repo/backup"
+                COMMAND3="du -ksh /backrestrepo/$pg_cluster-backrest-shared-repo/archive"
+                COMMAND4="ls -ltr /backrestrepo/$pg_cluster-backrest-shared-repo/backup/db"
+                COMMAND5="ls -ltr /backrestrepo/$pg_cluster-backrest-shared-repo/archive/db"
+                COMMAND6="ls -ltrR /backrestrepo/$pg_cluster-backrest-shared-repo/archive/db/12-1"
+                COMMAND7="ls -ltr /tmp"
+                COMMAND8="tail -50 /tmp/db-backup.log"
+                COMMAND9="tail -50 /tmp/db-expire.log"
+                COMMAND10="ps -elf"
+
+                BACKREST_COMMANDS=("COMMAND1" "COMMAND2" "COMMAND3" "COMMAND4" "COMMAND5" "COMMAND6" "COMMAND7" "COMMAND8" "COMMAND9" "COMMAND10")
+                for COMMAND in "${BACKREST_COMMANDS[@]}"; do
+                    COMMAND="${!COMMAND}"
+                    echo -e "\nCommand $COMMAND running..." >> $target_dir/backrest-repo-details.out
+                    OUTPUT=$(kubectl exec -i management-d9880c3a-postgres-backrest-shared-repo-7984d69bchm9p -- $COMMAND)
+                    echo -e "$OUTPUT\n" >> $target_dir/backrest-repo-details.out
+                done
+            fi
+
             #grab gateway diagnostic data
             if [[ $DIAG_GATEWAY -eq 1 && $IS_GATEWAY -eq 1 && $ready -eq 1 && "$status" == "Running" && "$pod" != *"monitor"* && "$pod" != *"operator"* ]]; then
                 GATEWAY_DIAGNOSTIC_DATA="${K8S_NAMESPACES_POD_DIAGNOSTIC_DATA}/gateway/${pod}"
