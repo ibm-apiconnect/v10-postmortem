@@ -1522,7 +1522,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
                 BACKREST_COMMANDS=("COMMAND1" "COMMAND2" "COMMAND3" "COMMAND4" "COMMAND5" "COMMAND6" "COMMAND7" "COMMAND8" "COMMAND9" "COMMAND10")
                 for COMMAND in "${BACKREST_COMMANDS[@]}"; do
                     COMMAND="${!COMMAND}"
-                    echo -e "\nCommand $COMMAND running..." >> $target_dir/backrest-repo-details.out
+                    echo -e "\nExecuting Command: $COMMAND" >> $target_dir/backrest-repo-details.out
                     OUTPUT=$(kubectl exec -i management-d9880c3a-postgres-backrest-shared-repo-7984d69bchm9p -- $COMMAND)
                     echo -e "$OUTPUT\n" >> $target_dir/backrest-repo-details.out
                 done
