@@ -369,16 +369,7 @@ if [[ $IS_OVA -eq 1 ]]; then
 
     #grab CR yaml from /var/lib/apiconnect/subsystem/manifests
     sudo cp /var/lib/apiconnect/subsystem/manifests/"$(ls -1 /var/lib/apiconnect/subsystem/manifests | tail -n 1)" "${OVA_DATA}/subsystem-cr.yaml" 2>/dev/null
-
-    #grab bash history
-    if [[ $NO_HISTORY -ne 1 ]]; then
-        HISTFILE=~/.bash_history
-        set -o history
-        HISTTIMEFORMAT="%F %T " history >> "${OVA_DATA}/root-timestamped-bash_history.out"
-        cp "/home/apicadm/.bash_history" "${OVA_DATA}/apicadm-bash_history.out" &>/dev/null
-        cp "/root/.bash_history" "${OVA_DATA}/root-bash_history.out" &>/dev/null
-    fi
-
+    
     #pull disk data
     echo -e "> blkid /dev/sr0" >"${OVA_DATA}/disk_data.out" 2>/dev/null
     blkid /dev/sr0 1>>"${OVA_DATA}/disk_data.out" 2>/dev/null
@@ -387,7 +378,7 @@ if [[ $IS_OVA -eq 1 ]]; then
     echo -e "\n>df -kh | egrep -v 'kubelet|docker'" 1>>"${OVA_DATA}/disk_data.out" 2>/dev/null
     df -kh | egrep -v 'kubelet|docker' 1>>"${OVA_DATA}/disk_data.out" 2>/dev/null
 
-    #pull appliance logs
+    #pull appliance logs and bash history
     if [[ $PULL_APPLIANCE_LOGS -eq 1 ]]; then
         cd $OVA_DATA
         sudo apic logs &>/dev/null
