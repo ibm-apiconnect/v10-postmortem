@@ -1788,20 +1788,32 @@ for NAMESPACE in $NAMESPACE_LIST; do
     fi
 
 #------------------------------------ Pull Data CP4i specific data ------------------------------------
-    if [[ "$NAMESPACE" == "ibm-common-services" ]]; then
-        ICS_NAMESPACE="${K8S_NAMESPACES}/ibm-common-services"
+    OUTPUT=`oc api-versions`
+    ocp=false
+    if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then 
+        while read line; do 
+            holding=`echo "$line" | cut -d' ' -f1`
+            if [[ "$holding" = "route.openshift.io/v1" || "$holding" = "route.openshift.io" ]]; then
+                ocp=true
+            fi
+        done <<< "$OUTPUT"
+    fi  
 
-        ICS_INSTALL_PLAN_DATA="${ICS_NAMESPACE}/install_plans"
+    if [[ $ocp = true ]]; then
+        ICS_INSTALL_PLAN_DATA="${K8S_NAMESPACES_SPECIFIC}/install_plans"
         ICS_INSTALL_PLAN_DESCRIBE_DATA="${ICS_INSTALL_PLAN_DATA}/describe"
         ICS_INSTALL_PLAN_YAML_OUTPUT="${ICS_INSTALL_PLAN_DATA}/yaml"
 
-        ICS_SUBSCRIPTION_DATA="${ICS_NAMESPACE}/subscriptions"
+        ICS_SUBSCRIPTION_DATA="${K8S_NAMESPACES_SPECIFIC}/subscriptions"
         ICS_SUBSCRIPTION_DESCRIBE_DATA="${ICS_SUBSCRIPTION_DATA}/describe"
         ICS_SUBSCRIPTION_YAML_OUTPUT="${ICS_SUBSCRIPTION_DATA}/yaml"
 
-        ICS_CLUSTER_SERVICE_VERSION_DATA="${ICS_NAMESPACE}/cluster_service_version"
+        ICS_CLUSTER_SERVICE_VERSION_DATA="${K8S_NAMESPACES_SPECIFIC}/cluster_service_version"
         ICS_CLUSTER_SERVICE_VERSION_DESCRIBE_DATA="${ICS_CLUSTER_SERVICE_VERSION_DATA}/describe"
         ICS_CLUSTER_SERVICE_VERSION_YAML_OUTPUT="${ICS_CLUSTER_SERVICE_VERSION_DATA}/yaml"
+
+        ICS_CATALOG_SOURCE_DATA="${K8S_CLUSTER}/catalog_source"
+        ICS_CATALOG_SOURCE_DATA_YAML_OUTPUT="${ICS_CATALOG_SOURCE_DATA}/yaml"
 
         mkdir -p $ICS_INSTALL_PLAN_DESCRIBE_DATA
         mkdir -p $ICS_INSTALL_PLAN_YAML_OUTPUT
@@ -1811,6 +1823,8 @@ for NAMESPACE in $NAMESPACE_LIST; do
 
         mkdir -p $ICS_CLUSTER_SERVICE_VERSION_DESCRIBE_DATA
         mkdir -p $ICS_CLUSTER_SERVICE_VERSION_YAML_OUTPUT
+
+        mkdir -p $ICS_CATALOG_SOURCE_DATA_YAML_OUTPUT
 
         OUTPUT=`$KUBECTL get InstallPlan -n $NAMESPACE 2>/dev/null`
         if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
@@ -1856,6 +1870,15 @@ for NAMESPACE in $NAMESPACE_LIST; do
         else
             rm -fr $ICS_CLUSTER_SERVICE_VERSION_DATA
         fi
+    fi
+
+    OUTPUT=`$KUBECTL get catalogsource -A 2>/dev/null` 
+    if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then 
+        echo "$OUTPUT" > "${ICS_CATALOG_SOURCE_DATA}/ics-catalog-source.out"
+    fi
+    OUTPUT=`$KUBECTL get catalogsource -A -o yaml 2>/dev/null`
+    if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then 
+        echo "$OUTPUT" > "${ICS_CATALOG_SOURCE_DATA_YAML_OUTPUT}/catalog-source-yaml.out"
     fi
 #------------------------------------------------------------------------------------------------------
 
