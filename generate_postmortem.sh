@@ -1839,7 +1839,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
                 [ $? -eq 0 ] || rm -f "${ICS_SUBSCRIPTION_YAML_OUTPUT}/${sub}.out"
             done <<< "$OUTPUT"
         else
-            rm -fr $ICS_INSTALL_PLAN_DATA
+            rm -fr $ICS_SUBSCRIPTION_DATA
         fi
 
         OUTPUT=`$KUBECTL get ClusterServiceVersion -n $NAMESPACE 2>/dev/null`
@@ -1854,7 +1854,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
                 [ $? -eq 0 ] || rm -f "${ICS_CLUSTER_SERVICE_VERSION_YAML_OUTPUT}/${csv}.out"
             done <<< "$OUTPUT"
         else
-            rm -fr $ICS_INSTALL_PLAN_DATA
+            rm -fr $ICS_CLUSTER_SERVICE_VERSION_DATA
         fi
     fi
 #------------------------------------------------------------------------------------------------------
