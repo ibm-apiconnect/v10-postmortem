@@ -80,6 +80,12 @@ function is_kubectl_cnp_plugin {
     fi
 }
 
+#Check to see if this is an OCP cluster
+IS_OCP=false
+if oc api-resources | grep -q "route.openshift.io"; then 
+    IS_OCP=true
+fi
+
 for switch in $@; do
     case $switch in
         *"-h"*|*"--help"*)
@@ -979,17 +985,15 @@ for NAMESPACE in $NAMESPACE_LIST; do
     [[ $? -ne 0 || ${#OUTPUT} -eq 0 ]] ||  echo "$OUTPUT" > "${K8S_NAMESPACES_LIST_DATA}/hpa.out"
 
     #grab ingress/routes then check each
-    OUTPUT=`$KUBECTL get ingress -n $NAMESPACE 2>/dev/null`
-    if [[ ${#OUTPUT} -gt 0 ]]; then
-        ir_outfile="ingress.out"
-        ir_checks_outfile="ingress-checks.out"
-        IS_OCP=0
-    else
+    if [[ $IS_OCP ]]; then 
         OUTPUT=`$KUBECTL get routes -n $NAMESPACE 2>/dev/null`
         ir_outfile="routes.out"
         ir_checks_outfile="routes-checks.out"
-        IS_OCP=1
-    fi
+    else 
+        OUTPUT=`$KUBECTL get ingress -n $NAMESPACE 2>/dev/null`
+        ir_outfile="ingress.out"
+        ir_checks_outfile="ingress-checks.out"  
+    fi  
 
     IR_OUTFILE="${K8S_NAMESPACES_LIST_DATA}/${ir_outfile}"
     IR_CHECKS_OUTFILE="${K8S_NAMESPACES_LIST_DATA}/${ir_checks_outfile}"
@@ -1788,18 +1792,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
     fi
 
 #------------------------------------ Pull Data CP4i specific data ------------------------------------
-    OUTPUT=`oc api-versions`
-    ocp=false
-    if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then 
-        while read line; do 
-            holding=`echo "$line" | cut -d' ' -f1`
-            if [[ "$holding" = "route.openshift.io/v1" || "$holding" = "route.openshift.io" ]]; then
-                ocp=true
-            fi
-        done <<< "$OUTPUT"
-    fi  
-
-    if [[ $ocp = true ]]; then
+    if [[ $IS_OCP ]]; then
         ICS_INSTALL_PLAN_DATA="${K8S_NAMESPACES_SPECIFIC}/install_plans"
         ICS_INSTALL_PLAN_DESCRIBE_DATA="${ICS_INSTALL_PLAN_DATA}/describe"
         ICS_INSTALL_PLAN_YAML_OUTPUT="${ICS_INSTALL_PLAN_DATA}/yaml"
