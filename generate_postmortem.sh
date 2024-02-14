@@ -1805,7 +1805,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
         ICS_CLUSTER_SERVICE_VERSION_DESCRIBE_DATA="${ICS_CLUSTER_SERVICE_VERSION_DATA}/describe"
         ICS_CLUSTER_SERVICE_VERSION_YAML_OUTPUT="${ICS_CLUSTER_SERVICE_VERSION_DATA}/yaml"
 
-        ICS_CATALOG_SOURCE_DATA="${K8S_CLUSTER}/catalog_source"
+        ICS_CATALOG_SOURCE_DATA="${K8S_NAMESPACES_SPECIFIC}/catalog_source"
         ICS_CATALOG_SOURCE_DATA_YAML_OUTPUT="${ICS_CATALOG_SOURCE_DATA}/yaml"
 
         mkdir -p $ICS_INSTALL_PLAN_DESCRIBE_DATA
@@ -1863,16 +1863,20 @@ for NAMESPACE in $NAMESPACE_LIST; do
         else
             rm -fr $ICS_CLUSTER_SERVICE_VERSION_DATA
         fi
+
+        OUTPUT=`$KUBECTL get catalogsource -n $NAMESPACE 2>/dev/null` 
+        if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then 
+            echo "$OUTPUT" > "${ICS_CATALOG_SOURCE_DATA}/ics-catalog-source.out"
+            while read line; do 
+                cs=`echo "$line" | cut -d' ' -f1`
+                $KUBECTL get catalogsource $cs -o yaml -n $NAMESPACE &>"${ICS_CATALOG_SOURCE_DATA_YAML_OUTPUT}/${cs}.out"
+                [ $? -eq 0 ] || rm -f "${ICS_CATALOG_SOURCE_DATA_YAML_OUTPUT}/${cs}.out"
+            done <<< "$OUTPUT"
+        else 
+            rm -fr $ICS_CATALOG_SOURCE_DATA
+        fi
     fi
 
-    OUTPUT=`$KUBECTL get catalogsource -A 2>/dev/null` 
-    if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then 
-        echo "$OUTPUT" > "${ICS_CATALOG_SOURCE_DATA}/ics-catalog-source.out"
-    fi
-    OUTPUT=`$KUBECTL get catalogsource -A -o yaml 2>/dev/null`
-    if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then 
-        echo "$OUTPUT" > "${ICS_CATALOG_SOURCE_DATA_YAML_OUTPUT}/catalog-source-yaml.out"
-    fi
 #------------------------------------------------------------------------------------------------------
 
 done
