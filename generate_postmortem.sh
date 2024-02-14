@@ -1793,87 +1793,87 @@ for NAMESPACE in $NAMESPACE_LIST; do
 
 #------------------------------------ Pull Data CP4i specific data ------------------------------------
     if [[ $IS_OCP ]]; then
-        ICS_INSTALL_PLAN_DATA="${K8S_NAMESPACES_SPECIFIC}/install_plans"
-        ICS_INSTALL_PLAN_DESCRIBE_DATA="${ICS_INSTALL_PLAN_DATA}/describe"
-        ICS_INSTALL_PLAN_YAML_OUTPUT="${ICS_INSTALL_PLAN_DATA}/yaml"
+        OCP_INSTALL_PLAN_DATA="${K8S_NAMESPACES_SPECIFIC}/install_plans"
+        OCP_INSTALL_PLAN_DESCRIBE_DATA="${OCP_INSTALL_PLAN_DATA}/describe"
+        OCP_INSTALL_PLAN_YAML_OUTPUT="${OCP_INSTALL_PLAN_DATA}/yaml"
 
-        ICS_SUBSCRIPTION_DATA="${K8S_NAMESPACES_SPECIFIC}/subscriptions"
-        ICS_SUBSCRIPTION_DESCRIBE_DATA="${ICS_SUBSCRIPTION_DATA}/describe"
-        ICS_SUBSCRIPTION_YAML_OUTPUT="${ICS_SUBSCRIPTION_DATA}/yaml"
+        OCP_SUBSCRIPTION_DATA="${K8S_NAMESPACES_SPECIFIC}/subscriptions"
+        OCP_SUBSCRIPTION_DESCRIBE_DATA="${OCP_SUBSCRIPTION_DATA}/describe"
+        OCP_SUBSCRIPTION_YAML_OUTPUT="${OCP_SUBSCRIPTION_DATA}/yaml"
 
-        ICS_CLUSTER_SERVICE_VERSION_DATA="${K8S_NAMESPACES_SPECIFIC}/cluster_service_version"
-        ICS_CLUSTER_SERVICE_VERSION_DESCRIBE_DATA="${ICS_CLUSTER_SERVICE_VERSION_DATA}/describe"
-        ICS_CLUSTER_SERVICE_VERSION_YAML_OUTPUT="${ICS_CLUSTER_SERVICE_VERSION_DATA}/yaml"
+        OCP_CLUSTER_SERVICE_VERSION_DATA="${K8S_NAMESPACES_SPECIFIC}/cluster_service_version"
+        OCP_CLUSTER_SERVICE_VERSION_DESCRIBE_DATA="${OCP_CLUSTER_SERVICE_VERSION_DATA}/describe"
+        OCP_CLUSTER_SERVICE_VERSION_YAML_OUTPUT="${OCP_CLUSTER_SERVICE_VERSION_DATA}/yaml"
 
-        ICS_CATALOG_SOURCE_DATA="${K8S_NAMESPACES_SPECIFIC}/catalog_source"
-        ICS_CATALOG_SOURCE_DATA_YAML_OUTPUT="${ICS_CATALOG_SOURCE_DATA}/yaml"
+        OCP_CATALOG_SOURCE_DATA="${K8S_NAMESPACES_SPECIFIC}/catalog_source"
+        OCP_CATALOG_SOURCE_DATA_YAML_OUTPUT="${OCP_CATALOG_SOURCE_DATA}/yaml"
 
-        mkdir -p $ICS_INSTALL_PLAN_DESCRIBE_DATA
-        mkdir -p $ICS_INSTALL_PLAN_YAML_OUTPUT
+        mkdir -p $OCP_INSTALL_PLAN_DESCRIBE_DATA
+        mkdir -p $OCP_INSTALL_PLAN_YAML_OUTPUT
 
-        mkdir -p $ICS_SUBSCRIPTION_DESCRIBE_DATA
-        mkdir -p $ICS_SUBSCRIPTION_YAML_OUTPUT
+        mkdir -p $OCP_SUBSCRIPTION_DESCRIBE_DATA
+        mkdir -p $OCP_SUBSCRIPTION_YAML_OUTPUT
 
-        mkdir -p $ICS_CLUSTER_SERVICE_VERSION_DESCRIBE_DATA
-        mkdir -p $ICS_CLUSTER_SERVICE_VERSION_YAML_OUTPUT
+        mkdir -p $OCP_CLUSTER_SERVICE_VERSION_DESCRIBE_DATA
+        mkdir -p $OCP_CLUSTER_SERVICE_VERSION_YAML_OUTPUT
 
-        mkdir -p $ICS_CATALOG_SOURCE_DATA_YAML_OUTPUT
+        mkdir -p $OCP_CATALOG_SOURCE_DATA_YAML_OUTPUT
 
         OUTPUT=`$KUBECTL get InstallPlan -n $NAMESPACE 2>/dev/null`
         if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
-            echo "$OUTPUT" > "${ICS_INSTALL_PLAN_DATA}/install_plans.out"
+            echo "$OUTPUT" > "${OCP_INSTALL_PLAN_DATA}/install_plans.out"
             while read line; do
                 ip=`echo "$line" | cut -d' ' -f1`
-                $KUBECTL describe InstallPlan $ip -n $NAMESPACE &>"${ICS_INSTALL_PLAN_DESCRIBE_DATA}/${ip}.out"
-                [ $? -eq 0 ] || rm -f "${ICS_INSTALL_PLAN_DESCRIBE_DATA}/${ip}.out"
+                $KUBECTL describe InstallPlan $ip -n $NAMESPACE &>"${OCP_INSTALL_PLAN_DESCRIBE_DATA}/${ip}.out"
+                [ $? -eq 0 ] || rm -f "${OCP_INSTALL_PLAN_DESCRIBE_DATA}/${ip}.out"
 
-                $KUBECTL get InstallPlan $ip -o yaml -n $NAMESPACE &>"${ICS_INSTALL_PLAN_YAML_OUTPUT}/${ip}.out"
-                [ $? -eq 0 ] || rm -f "${ICS_INSTALL_PLAN_YAML_OUTPUT}/${ip}.out"
+                $KUBECTL get InstallPlan $ip -o yaml -n $NAMESPACE &>"${OCP_INSTALL_PLAN_YAML_OUTPUT}/${ip}.out"
+                [ $? -eq 0 ] || rm -f "${OCP_INSTALL_PLAN_YAML_OUTPUT}/${ip}.out"
             done <<< "$OUTPUT"
         else
-            rm -fr $ICS_INSTALL_PLAN_DATA
+            rm -fr $OCP_INSTALL_PLAN_DATA
         fi
 
         OUTPUT=`$KUBECTL get Subscription -n $NAMESPACE 2>/dev/null`
         if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
-            echo "$OUTPUT" > "${ICS_SUBSCRIPTION_DATA}/subscriptions.out"
+            echo "$OUTPUT" > "${OCP_SUBSCRIPTION_DATA}/subscriptions.out"
             while read line; do
                 sub=`echo "$line" | cut -d' ' -f1`
-                $KUBECTL describe Subscription $sub -n $NAMESPACE &>"${ICS_SUBSCRIPTION_DESCRIBE_DATA}/${sub}.out"
-                [ $? -eq 0 ] || rm -f "${ICS_SUBSCRIPTION_DESCRIBE_DATA}/${sub}.out"
+                $KUBECTL describe Subscription $sub -n $NAMESPACE &>"${OCP_SUBSCRIPTION_DESCRIBE_DATA}/${sub}.out"
+                [ $? -eq 0 ] || rm -f "${OCP_SUBSCRIPTION_DESCRIBE_DATA}/${sub}.out"
 
-                $KUBECTL get Subscription $sub -o yaml -n $NAMESPACE &>"${ICS_SUBSCRIPTION_YAML_OUTPUT}/${sub}.out"
-                [ $? -eq 0 ] || rm -f "${ICS_SUBSCRIPTION_YAML_OUTPUT}/${sub}.out"
+                $KUBECTL get Subscription $sub -o yaml -n $NAMESPACE &>"${OCP_SUBSCRIPTION_YAML_OUTPUT}/${sub}.out"
+                [ $? -eq 0 ] || rm -f "${OCP_SUBSCRIPTION_YAML_OUTPUT}/${sub}.out"
             done <<< "$OUTPUT"
         else
-            rm -fr $ICS_SUBSCRIPTION_DATA
+            rm -fr $OCP_SUBSCRIPTION_DATA
         fi
 
         OUTPUT=`$KUBECTL get ClusterServiceVersion -n $NAMESPACE 2>/dev/null`
         if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
-            echo "$OUTPUT" > "${ICS_CLUSTER_SERVICE_VERSION_DATA}/cluster_service_version.out"
+            echo "$OUTPUT" > "${OCP_CLUSTER_SERVICE_VERSION_DATA}/cluster_service_version.out"
             while read line; do
                 csv=`echo "$line" | cut -d' ' -f1`
-                $KUBECTL describe ClusterServiceVersion $csv -n $NAMESPACE &>"${ICS_CLUSTER_SERVICE_VERSION_DESCRIBE_DATA}/${csv}.out"
-                [ $? -eq 0 ] || rm -f "${ICS_CLUSTER_SERVICE_VERSION_DESCRIBE_DATA}/${csv}.out"
+                $KUBECTL describe ClusterServiceVersion $csv -n $NAMESPACE &>"${OCP_CLUSTER_SERVICE_VERSION_DESCRIBE_DATA}/${csv}.out"
+                [ $? -eq 0 ] || rm -f "${OCP_CLUSTER_SERVICE_VERSION_DESCRIBE_DATA}/${csv}.out"
 
-                $KUBECTL get ClusterServiceVersion $csv -o yaml -n $NAMESPACE &>"${ICS_CLUSTER_SERVICE_VERSION_YAML_OUTPUT}/${csv}.out"
-                [ $? -eq 0 ] || rm -f "${ICS_CLUSTER_SERVICE_VERSION_YAML_OUTPUT}/${csv}.out"
+                $KUBECTL get ClusterServiceVersion $csv -o yaml -n $NAMESPACE &>"${OCP_CLUSTER_SERVICE_VERSION_YAML_OUTPUT}/${csv}.out"
+                [ $? -eq 0 ] || rm -f "${OCP_CLUSTER_SERVICE_VERSION_YAML_OUTPUT}/${csv}.out"
             done <<< "$OUTPUT"
         else
-            rm -fr $ICS_CLUSTER_SERVICE_VERSION_DATA
+            rm -fr $OCP_CLUSTER_SERVICE_VERSION_DATA
         fi
 
         OUTPUT=`$KUBECTL get catalogsource -n $NAMESPACE 2>/dev/null` 
         if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then 
-            echo "$OUTPUT" > "${ICS_CATALOG_SOURCE_DATA}/ics-catalog-source.out"
+            echo "$OUTPUT" > "${OCP_CATALOG_SOURCE_DATA}/ocp-catalog-source.out"
             while read line; do 
                 cs=`echo "$line" | cut -d' ' -f1`
-                $KUBECTL get catalogsource $cs -o yaml -n $NAMESPACE &>"${ICS_CATALOG_SOURCE_DATA_YAML_OUTPUT}/${cs}.out"
-                [ $? -eq 0 ] || rm -f "${ICS_CATALOG_SOURCE_DATA_YAML_OUTPUT}/${cs}.out"
+                $KUBECTL get catalogsource $cs -o yaml -n $NAMESPACE &>"${OCP_CATALOG_SOURCE_DATA_YAML_OUTPUT}/${cs}.out"
+                [ $? -eq 0 ] || rm -f "${OCP_CATALOG_SOURCE_DATA_YAML_OUTPUT}/${cs}.out"
             done <<< "$OUTPUT"
         else 
-            rm -fr $ICS_CATALOG_SOURCE_DATA
+            rm -fr $OCP_CATALOG_SOURCE_DATA
         fi
     fi
 
