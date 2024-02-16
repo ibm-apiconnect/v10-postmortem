@@ -86,7 +86,6 @@ if oc api-resources | grep -q "route.openshift.io"; then
     IS_OCP=true
 fi
 
-
 for switch in $@; do
     case $switch in
         *"-h"*|*"--help"*)
@@ -233,7 +232,7 @@ if [[ $? -ne 0 ]]; then
     fi
 fi
 
-#Checking for diagnostic scripts
+#Checking for diagnostic collection, ensuring the crunchy script or edb script are available
 if [[ ! $NO_DIAG_COLLECTION -eq 1 ]]; then
     EDB_CLUSTER_NAME=$($KUBECTL get cluster --all-namespaces -o=jsonpath='{.items[0].metadata.name}' 2>/dev/null)
     if [[ -z "$EDB_CLUSTER_NAME" ]]; then
