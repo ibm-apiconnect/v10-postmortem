@@ -1116,14 +1116,23 @@ for NAMESPACE in $NAMESPACE_LIST; do
             APICOPS="apicops"
         else
             if [[ ! -e /tmp/apicops-v10-linux  ]]; then
-                echo -e "Downloading apicops......"
-                curl -L -o /tmp/apicops-v10-linux https://github.com/ibm-apiconnect/apicops/releases/latest/download/apicops-v10-linux
-                if [[ ! -e /tmp/apicops-v10-linux  ]]; then
-                    echo -e "Warning: Failed to download the apicops cli. Skipping to collect apicops debuggings commands output. Please download the latest release of apicops manually before running the postmortem script. commands: curl -LO https://github.com/ibm-apiconnect/apicops/releases/latest/download/apicops-v10-linux"
-                else
-                    chmod +x /tmp/apicops-v10-linux
-                    APICOPS="/tmp/apicops-v10-linux"
-                fi
+                echo -e "apicops cli not found!"
+                read -p "Download and Install apicops cli (y/n)? " yn
+                case $yn in
+                    [Yy]* )
+                        echo -e "Downloading apicops......"
+                        curl -L -o /tmp/apicops-v10-linux https://github.com/ibm-apiconnect/apicops/releases/latest/download/apicops-v10-linux
+                        if [[ ! -e /tmp/apicops-v10-linux  ]]; then
+                            echo -e "Warning: Failed to download the apicops cli. Skipping to collect apicops mustgather. Please download the latest release of apicops manually before running the postmortem script. commands: curl -LO https://github.com/ibm-apiconnect/apicops/releases/latest/download/apicops-v10-linux"
+                        else
+                            chmod +x /tmp/apicops-v10-linux
+                            APICOPS="/tmp/apicops-v10-linux"
+                        fi
+                        ;;
+                    [Nn]* )
+                        echo -e "Skipping to collect apicops mustgather"
+                        ;;
+                esac
             else 
                 APICOPS="/tmp/apicops-v10-linux"
             fi
