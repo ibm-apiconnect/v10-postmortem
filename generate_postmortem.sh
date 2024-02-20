@@ -9,9 +9,9 @@
 #
 
 #parse passed arguments
-NUMERICALVERSION=26
-PMCOMMITDATE='Thu Feb 15 00:03:30 UTC 2024'
-PMCOMMIT='bd7aa0f4b4e50cecfccc9036740446fcb71c5b7e'
+NUMERICALVERSION=27
+PMCOMMITDATE='Tue Feb 20 13:01:06 UTC 2024'
+PMCOMMIT='d45afba9dadd4c8ea7c93da3440f34bf13a5867c'
 PMCOMMITURL="https://github.com/ibm-apiconnect/v10-postmortem/blob/$PMCOMMIT/generate_postmortem.sh"
 print_postmortem_version(){
     echo "Postmortem Version: $NUMERICALVERSION, Date: $PMCOMMITDATE, URL: $PMCOMMITURL"
@@ -44,6 +44,11 @@ warn_if_script_is_not_latest() {
 which oc &> /dev/null
 if [[ $? -eq 0 ]]; then
     KUBECTL="oc"
+    $KUBECTL whoami
+    if [[ $? -ne 0 ]]; then
+      echo "Error: oc whoami failed. This script requires you to be logged in to the server. EXITING..."
+      exit 1
+    fi
 else
     which kubectl &> /dev/null
     if [[ $? -ne 0 ]]; then
