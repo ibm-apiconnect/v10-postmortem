@@ -44,6 +44,11 @@ warn_if_script_is_not_latest() {
 which oc &> /dev/null
 if [[ $? -eq 0 ]]; then
     KUBECTL="oc"
+    $KUBECTL whoami
+    if [[ $? -ne 0 ]]; then
+      echo "Error: oc whoami failed. This script requires you to be logged in to the server. EXITING..."
+      exit 1
+    fi
 else
     which kubectl &> /dev/null
     if [[ $? -ne 0 ]]; then
