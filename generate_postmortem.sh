@@ -9,9 +9,9 @@
 #
 
 #parse passed arguments
-NUMERICALVERSION=27
-PMCOMMITDATE='Tue Feb 20 13:01:06 UTC 2024'
-PMCOMMIT='d45afba9dadd4c8ea7c93da3440f34bf13a5867c'
+NUMERICALVERSION=28
+PMCOMMITDATE='Wed Feb 21 15:07:33 UTC 2024'
+PMCOMMIT='1ad0e09f28767c2740cac782be852aa1e09b2ba3'
 PMCOMMITURL="https://github.com/ibm-apiconnect/v10-postmortem/blob/$PMCOMMIT/generate_postmortem.sh"
 print_postmortem_version(){
     echo "Postmortem Version: $NUMERICALVERSION, Date: $PMCOMMITDATE, URL: $PMCOMMITURL"
@@ -1111,6 +1111,48 @@ for NAMESPACE in $NAMESPACE_LIST; do
         $CURRENT_PATH/edb_mustgather.sh $NAMESPACE $K8S_NAMESPACES_EDB &> "${K8S_NAMESPACES_EDB}/edb-collect.log"
     fi
 
+    #grab apicops mustgather
+    MGMT=$(kubectl get mgmt -n $NAMESPACE 2>&1)
+    if [[ $MGMT != *"No resources found"* ]]; then
+
+        which apicops &> /dev/null
+        if [[ $? -eq 0 ]]; then
+            APICOPS="apicops"
+        else
+            if [[ ! -e /tmp/apicops-v10-linux  ]]; then
+                echo -e "apicops cli not found!"
+                read -p "Download and Install apicops cli (y/n)? " yn
+                case $yn in
+                    [Yy]* )
+                        echo -e "Downloading apicops......"
+                        curl -L -o /tmp/apicops-v10-linux https://github.com/ibm-apiconnect/apicops/releases/latest/download/apicops-v10-linux
+                        if [[ ! -e /tmp/apicops-v10-linux  ]]; then
+                            echo -e "Warning: Failed to download the apicops cli. Skipping to collect apicops mustgather. Please download the latest release of apicops manually before running the postmortem script. commands: curl -LO https://github.com/ibm-apiconnect/apicops/releases/latest/download/apicops-v10-linux"
+                        else
+                            chmod +x /tmp/apicops-v10-linux
+                            APICOPS="/tmp/apicops-v10-linux"
+                        fi
+                        ;;
+                    [Nn]* )
+                        echo -e "Skipping to collect apicops mustgather"
+                        ;;
+                esac
+            else 
+                APICOPS="/tmp/apicops-v10-linux"
+            fi
+        fi
+
+        if [ -v APICOPS ]; then
+            K8S_NAMESPACES_APICOPS_DATA="${K8S_NAMESPACES_SPECIFIC}/apicops"
+            mkdir -p $K8S_NAMESPACES_APICOPS_DATA
+
+            #List of apicops commands to be run for mustgather
+            $APICOPS iss  -n $NAMESPACE > "${K8S_NAMESPACES_APICOPS_DATA}/iss.out"
+            $APICOPS debug:info  -n $NAMESPACE > "${K8S_NAMESPACES_APICOPS_DATA}/debug-info.out"
+
+        fi
+    fi
+
     #grab daemonset data
     OUTPUT=`$KUBECTL get daemonset -n $NAMESPACE 2>/dev/null`
     if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
@@ -1578,6 +1620,8 @@ for NAMESPACE in $NAMESPACE_LIST; do
                                 echo "$OUTPUT1" >"${PORTAL_DIAGNOSTIC_DATA}/list_sites-platform.out"
                                 OUTPUT1=`$KUBECTL exec -n $NAMESPACE -c $container $pod -- bash -ic "/opt/ibm/bin/list_sites -d" 2>"/dev/null"`
                                 echo "$OUTPUT1" >"${PORTAL_DIAGNOSTIC_DATA}/list_sites-database.out"
+                                OUTPUT1=`$KUBECTL exec -n $NAMESPACE -c $container $pod -- bash -ic "/opt/ibm/bin/check_site -a" 2>"/dev/null"`
+                                echo "$OUTPUT1" >"${PORTAL_DIAGNOSTIC_DATA}/check_site-all.out"
                                 OUTPUT1=`$KUBECTL exec -n $NAMESPACE -c $container $pod -- bash -ic "/opt/ibm/bin/list_platforms" 2>"/dev/null"`
                                 echo "$OUTPUT1" >"${PORTAL_DIAGNOSTIC_DATA}/list_platforms.out"
                                 OUTPUT1=`$KUBECTL exec -n $NAMESPACE -c $container $pod -- bash -ic "ls -lRAi --author --full-time" 2>"/dev/null"`
