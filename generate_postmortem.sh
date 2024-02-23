@@ -1502,7 +1502,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
                 sleep 1
 
                 #write out XML to to file
-                XML_PATH="${TEMP_PATH}/error_report.xml"
+                XML_PATH=$(mktemp)
                 generateXmlForErrorReport "$XML_PATH"
 
                 #POST XML to gateway, start error report creation
@@ -1561,7 +1561,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
                 #clean up
                 kill -9 $pid
                 wait $pid &>/dev/null
-                rm -f $XML_PATH $SCRIPT_PATH
+                rm -f $XML_PATH
 
                 #reset variable
                 IS_GATEWAY=0
