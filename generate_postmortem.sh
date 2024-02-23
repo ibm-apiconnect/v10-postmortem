@@ -91,6 +91,7 @@ if oc api-resources | grep -q "route.openshift.io"; then
     IS_OCP=true
 fi
 
+#Setting values for 
 for switch in $@; do
     case $switch in
         *"-h"*|*"--help"*)
@@ -141,20 +142,20 @@ for switch in $@; do
         *"--no-diagnostic"*)
             NOT_DIAG_GATEWAY=1
             NOT_DIAG_MANAGER=1 
-            NOT_DIAG_PORTAL=1 
+            NOT_DIAG_PORTAL=1
             NOT_DIAG_ANALYTICS=1 
             ;;
         *"--no-gateway-diagnostic"*)
             NOT_DIAG_GATEWAY=1
             ;;
         *"--no-manager-diagnostic"*)
-            NOT_DIAG_MANAGER=1 
+            NOT_DIAG_MANAGER=1
             ;;
         *"--no-portal-diagnostic"*)
-            NOT_DIAG_PORTAL=1 
+            NOT_DIAG_PORTAL=1
             ;;
         *"--no-analytics-diagnostic"*)
-            NOT_DIAG_ANALYTICS=1 
+            NOT_DIAG_ANALYTICS=1
             ;;
         *"--log-limit"*)
             limit=`echo "${switch}" | cut -d'=' -f2`
@@ -257,7 +258,7 @@ if [[ $? -ne 0 ]]; then
 fi
 
 #Checking for diagnostic collection, ensuring the crunchy script or edb script are available
-if [[ ! $NOT_DIAG_MANAGER -eq 1 ]]; then
+if [[ $NOT_DIAG_MANAGER -eq 0 ]]; then
     EDB_CLUSTER_NAME=$($KUBECTL get cluster --all-namespaces -o=jsonpath='{.items[0].metadata.name}' 2>/dev/null)
     if [[ -z "$EDB_CLUSTER_NAME" ]]; then
         COLLECT_CRUNCHY=1
@@ -1403,7 +1404,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
             fi
 
             #grab postgres data
-            if [[ ! $NOT_DIAG_MANAGER -eq 1 && $COLLECT_CRUNCHY -eq 1 && "$status" == "Running" && "$pod" == *"postgres"* && ! "$pod" =~ (backrest|pgbouncer|stanza|operator) ]]; then
+            if [[ $NOT_DIAG_MANAGER -eq 0 && $COLLECT_CRUNCHY -eq 1 && "$status" == "Running" && "$pod" == *"postgres"* && ! "$pod" =~ (backrest|pgbouncer|stanza|operator) ]]; then
                 target_dir="${K8S_NAMESPACES_POD_DIAGNOSTIC_DATA}/postgres/${pod}-pglogs"
                 health_dir="${K8S_NAMESPACES_POD_DIAGNOSTIC_DATA}/postgres/${pod}-health-stats"
 
@@ -1488,7 +1489,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
             fi
 
             #grab gateway diagnostic data
-            if [[ ! $NOT_DIAG_GATEWAY -eq 1 && $IS_GATEWAY -eq 1 && $ready -eq 1 && "$status" == "Running" && "$pod" != *"monitor"* && "$pod" != *"operator"* ]]; then
+            if [[ $NOT_DIAG_GATEWAY -eq 0 && $IS_GATEWAY -eq 1 && $ready -eq 1 && "$status" == "Running" && "$pod" != *"monitor"* && "$pod" != *"operator"* ]]; then
                 GATEWAY_DIAGNOSTIC_DATA="${K8S_NAMESPACES_POD_DIAGNOSTIC_DATA}/gateway/${pod}"
                 mkdir -p $GATEWAY_DIAGNOSTIC_DATA
 
@@ -1572,7 +1573,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
             fi
 
             #grab analytics diagnostic data
-            if [[ ! $NOT_DIAG_ANALYTICS -eq 1 && $IS_ANALYTICS -eq 1 && $ready -eq 1 && "$status" == "Running" ]]; then
+            if [[ $NOT_DIAG_ANALYTICS -eq 0 && $IS_ANALYTICS -eq 1 && $ready -eq 1 && "$status" == "Running" ]]; then
                 ANALYTICS_DIAGNOSTIC_DATA="${K8S_NAMESPACES_POD_DIAGNOSTIC_DATA}/analytics/${pod}"
                 mkdir -p $ANALYTICS_DIAGNOSTIC_DATA
 
@@ -1608,7 +1609,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
                 [[ $? -eq 0 && -s "${LOG_TARGET_PATH}/${pod}_${container}_previous.log" ]] || rm -f "${LOG_TARGET_PATH}/${pod}_${container}_previous.log"
 
                 #grab portal data
-                if [[ ! $NOT_DIAG_PORTAL -eq 1 && $IS_PORTAL -eq 1 && "$status" == "Running" ]]; then
+                if [[ $NOT_DIAG_PORTAL -eq 0 && $IS_PORTAL -eq 1 && "$status" == "Running" ]]; then
                     PORTAL_DIAGNOSTIC_DATA="${K8S_NAMESPACES_POD_DIAGNOSTIC_DATA}/portal/${pod}/${container}"
 
                     echo "${pod}" | grep -q "www"
