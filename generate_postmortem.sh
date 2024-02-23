@@ -87,7 +87,7 @@ function is_kubectl_cnp_plugin {
 
 #Check to see if this is an OCP cluster
 IS_OCP=false
-if oc api-resources | grep -q "route.openshift.io"; then 
+if $KUBECTL api-resources | grep -q "route.openshift.io"; then
     IS_OCP=true
 fi
 
@@ -990,15 +990,15 @@ for NAMESPACE in $NAMESPACE_LIST; do
     [[ $? -ne 0 || ${#OUTPUT} -eq 0 ]] ||  echo "$OUTPUT" > "${K8S_NAMESPACES_LIST_DATA}/hpa.out"
 
     #grab ingress/routes then check each
-    if [[ $IS_OCP ]]; then 
+    if [[ $IS_OCP ]]; then
         OUTPUT=`$KUBECTL get routes -n $NAMESPACE 2>/dev/null`
         ir_outfile="routes.out"
         ir_checks_outfile="routes-checks.out"
-    else 
+    else
         OUTPUT=`$KUBECTL get ingress -n $NAMESPACE 2>/dev/null`
         ir_outfile="ingress.out"
-        ir_checks_outfile="ingress-checks.out"  
-    fi  
+        ir_checks_outfile="ingress-checks.out"
+    fi
 
     IR_OUTFILE="${K8S_NAMESPACES_LIST_DATA}/${ir_outfile}"
     IR_CHECKS_OUTFILE="${K8S_NAMESPACES_LIST_DATA}/${ir_checks_outfile}"
@@ -1133,7 +1133,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
                         echo -e "Skipping to collect apicops mustgather"
                         ;;
                 esac
-            else 
+            else
                 APICOPS="/tmp/apicops-v10-linux"
             fi
         fi
@@ -1913,15 +1913,15 @@ for NAMESPACE in $NAMESPACE_LIST; do
             rm -fr $OCP_CLUSTER_SERVICE_VERSION_DATA
         fi
 
-        OUTPUT=`$KUBECTL get catalogsource -n $NAMESPACE 2>/dev/null` 
-        if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then 
+        OUTPUT=`$KUBECTL get catalogsource -n $NAMESPACE 2>/dev/null`
+        if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
             echo "$OUTPUT" > "${OCP_CATALOG_SOURCE_DATA}/ocp-catalog-source.out"
-            while read line; do 
+            while read line; do
                 cs=`echo "$line" | cut -d' ' -f1`
                 $KUBECTL get catalogsource $cs -o yaml -n $NAMESPACE &>"${OCP_CATALOG_SOURCE_DATA_YAML_OUTPUT}/${cs}.out"
                 [ $? -eq 0 ] || rm -f "${OCP_CATALOG_SOURCE_DATA_YAML_OUTPUT}/${cs}.out"
             done <<< "$OUTPUT"
-        else 
+        else
             rm -fr $OCP_CATALOG_SOURCE_DATA
         fi
     fi
