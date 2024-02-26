@@ -140,38 +140,12 @@ for switch in $@; do
             ;;
         *"--diagnostic-all"*)
             DIAG_MANAGER=1
-            EDB_CLUSTER_NAME=$($KUBECTL get cluster --all-namespaces -o=jsonpath='{.items[0].metadata.name}' 2>/dev/null)
-            if [[ -z "$EDB_CLUSTER_NAME" ]]; then
-                COLLECT_CRUNCHY=1
-                SCRIPT_LOCATION="`pwd`/crunchy_gather.py"
-            else
-                COLLECT_EDB=1
-                is_kubectl_cnp_plugin
-                SCRIPT_LOCATION="`pwd`/edb_mustgather.sh"
-            fi
-            if [[ ! -f $SCRIPT_LOCATION ]]; then
-                echo -e "Unable to locate script ${SCRIPT_LOCATION} in current directory.  Download from GitHub repository.  Exiting..."
-                exit 1
-            fi
             DIAG_GATEWAY=1
             DIAG_PORTAL=1
             DIAG_ANALYTICS=1
             ;;
         *"--diagnostic-manager"*)
             DIAG_MANAGER=1
-            EDB_CLUSTER_NAME=$($KUBECTL get cluster --all-namespaces -o=jsonpath='{.items[0].metadata.name}' 2>/dev/null)
-            if [[ -z "$EDB_CLUSTER_NAME" ]]; then
-                COLLECT_CRUNCHY=1
-                SCRIPT_LOCATION="`pwd`/crunchy_gather.py"
-            else
-                COLLECT_EDB=1
-                is_kubectl_cnp_plugin
-                SCRIPT_LOCATION="`pwd`/edb_mustgather.sh"
-            fi
-            if [[ ! -f $SCRIPT_LOCATION ]]; then
-                echo -e "Unable to locate script ${SCRIPT_LOCATION} in current directory.  Download from GitHub repository.  Exiting..."
-                exit 1
-            fi
             ;;
         *"--diagnostic-gateway"*)
             DIAG_GATEWAY=1
@@ -278,6 +252,22 @@ if [[ $? -ne 0 ]]; then
     ARCHIVE_UTILITY=`which tar 2>/dev/null`
     if [[ $? -ne 0 ]]; then
         echo "Unable to locate either command [tar] / [zip] in the path.  Either install or add it to the path.  EXITING..."
+        exit 1
+    fi
+fi
+
+if [[ $DIAG_MANAGER -eq 1 ]]; then
+    EDB_CLUSTER_NAME=$($KUBECTL get cluster --all-namespaces -o=jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+    if [[ -z "$EDB_CLUSTER_NAME" ]]; then
+        COLLECT_CRUNCHY=1
+        SCRIPT_LOCATION="`pwd`/crunchy_gather.py"
+    else
+        COLLECT_EDB=1
+        is_kubectl_cnp_plugin
+        SCRIPT_LOCATION="`pwd`/edb_mustgather.sh"
+    fi
+    if [[ ! -f $SCRIPT_LOCATION ]]; then
+        echo -e "Unable to locate script ${SCRIPT_LOCATION} in current directory.  Download from GitHub repository.  Exiting..."
         exit 1
     fi
 fi
