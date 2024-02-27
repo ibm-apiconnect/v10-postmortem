@@ -1547,7 +1547,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
                 sleep 1
 
                 #write out XML to to file
-                XML_PATH="${TEMP_PATH}/error_report.xml"
+                XML_PATH=$(mktemp)
                 generateXmlForErrorReport "$XML_PATH"
 
                 #POST XML to gateway, start error report creation
@@ -1606,116 +1606,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
                 #clean up
                 kill -9 $pid
                 wait $pid &>/dev/null
-                rm -f $XML_PATH $SCRIPT_PATH
-
-                #reset variable
-                IS_GATEWAY=0
-            fi
-
-            #grab analytics diagnostic data
-            if [[ $DIAG_ANALYTICS -eq 1 && $IS_ANALYTICS -eq 1 && $ready -eq 1 && "$status" == "Running" ]]; then
-                ANALYTICS_DIAGNOSTIC_DATA="${K8S_NAMESPACES_POD_DIAGNOSTIC_DATA}/analytics/${pod}"
-                mkdir -p $ANALYTICS_DIAGNOSTIC_DATA
-
-                if [[ "$pod" == *"storage-"* ]]; then
-                    OUTPUT1=`$KUBECTL exec -n $NAMESPACE $pod -- curl -ks --cert /etc/velox/certs/client/tls.crt --key /etc/velox/certs/client/tls.key "https://localhost:9200/_cluster/health?pretty"`
-                    echo "$OUTPUT1" >"${ANALYTICS_DIAGNOSTIC_DATA}/curl-cluster_health.out"
-                    OUTPUT1=`$KUBECTL exec -n $NAMESPACE $pod -- curl -ks --cert /etc/velox/certs/client/tls.crt --key /etc/velox/certs/client/tls.key "https://localhost:9200/_cat/nodes?v"`
-                    echo "$OUTPUT1" >"${ANALYTICS_DIAGNOSTIC_DATA}/curl-cat_nodes.out"
-                    OUTPUT1=`$KUBECTL exec -n $NAMESPACE $pod -- curl -ks --cert /etc/velox/certs/client/tls.crt --key /etc/velox/certs/client/tls.key "https://localhost:9200/_cat/indices?v"`
-                    echo "$OUTPUT1" >"${ANALYTICS_DIAGNOSTIC_DATA}/curl-cat_indices.out"
-                    OUTPUT1=`$KUBECTL exec -n $NAMESPACE $pod -- curl -ks --cert /etc/velox/certs/client/tls.crt --key /etc/velox/certs/client/tls.key "https://localhost:9200/_cat/shards?v"`
-                    echo "$OUTPUT1" >"${ANALYTICS_DIAGNOSTIC_DATA}/curl-cat_shards.out"
-                    OUTPUT1=`$KUBECTL exec -n $NAMESPACE $pod -- curl -ks --cert /etc/velox/certs/client/tls.crt --key /etc/velox/certs/client/tls.key "https://localhost:9200/_alias?pretty"`
-                    echo "$OUTPUT1" >"${ANALYTICS_DIAGNOSTIC_DATA}/curl-alias.out"
-                    OUTPUT1=`$KUBECTL exec -n $NAMESPACE $pod -- curl -ks --cert /etc/velox/certs/client/tls.crt --key /etc/velox/certs/client/tls.key "https://localhost:9200/_cluster/allocation/explain?pretty"`
-                    echo "$OUTPUT1" >"${ANALYTICS_DIAGNOSTIC_DATA}/curl-cluster_allocation_explain.out"
-                elif [[ "$pod" == *"ingestion"* ]]; then
-                    OUTPUT1=`$KUBECTL exec -n $NAMESPACE $pod -- curl -s "localhost:9600/_node/stats?pretty"`
-                    echo "$OUTPUT1" >"${ANALYTICS_DIAGNOSTIC_DATA}/curl-node_stats.out"
-                fi
-            fi
-
-            #grab gateway diagnostic data
-            if [[ $DIAG_GATEWAY -eq 1 && $IS_GATEWAY -eq 1 && $ready -eq 1 && "$status" == "Running" && "$pod" != *"monitor"* && "$pod" != *"operator"* ]]; then
-                echo "Collecting gateway diagnostic data..."
-                GATEWAY_DIAGNOSTIC_DATA="${K8S_NAMESPACES_POD_DIAGNOSTIC_DATA}/gateway/${pod}"
-                mkdir -p $GATEWAY_DIAGNOSTIC_DATA
-
-                #grab all "gwd-log.log" files
-                GWD_FILE_LIST=`$KUBECTL exec -n $NAMESPACE ${pod} -- find /opt/ibm/datapower/drouter/temporary/log/apiconnect/ -name "gwd-log.log*"`
-                echo "${GWD_FILE_LIST}" | while read fullpath; do
-                    filename=$(basename $fullpath)
-                    $KUBECTL cp -n $NAMESPACE ${pod}:${fullpath} "${GATEWAY_DIAGNOSTIC_DATA}/${filename}" &>/dev/null
-                done
-
-                #open SOMA port to localhost
-                $KUBECTL port-forward ${pod} 5550:5550 -n ${NAMESPACE} 1>/dev/null 2>/dev/null &
-                pid=$!
-                #necessary to wait for port-forward to start
-                sleep 1
-
-                #write out XML to to file
-                XML_PATH="${TEMP_PATH}/error_report.xml"
-                generateXmlForErrorReport "$XML_PATH"
-
-                #POST XML to gateway, start error report creation
-                admin_password="admin"
-                secret_name=$($KUBECTL get DataPowerService $subGateway -n $NAMESPACE -o jsonpath='{.spec.users[?(@.name=="admin")].passwordSecret}')
-                if [[ ${#secret_name} -gt 0 ]]; then
-                    admin_password=`$KUBECTL -n $NAMESPACE get secret $secret_name -o jsonpath='{.data.password}' | base64 -d`
-                fi
-
-                response=`curl -k -X POST --write-out %{http_code} --silent --output /dev/null \
-                    -u admin:${admin_password} \
-                    -H "Content-Type: application/xml" \
-                    -d "@${XML_PATH}" \
-                    https://127.0.0.1:5550`
-
-                #only proceed with error report if response status code is 200
-                if [[ $response -eq 200 ]]; then
-
-                    #pull error report
-                    echo -e "Pausing for error report to generate..."
-                    sleep $ERROR_REPORT_SLEEP_TIMEOUT
-
-                    #this will give a link that points to the target error report
-                    $KUBECTL cp -n $NAMESPACE "${pod}:/opt/ibm/datapower/drouter/temporary/error-report.txt.gz" "${GATEWAY_DIAGNOSTIC_DATA}/error-report.txt.gz" 1>/dev/null 2>"${GATEWAY_DIAGNOSTIC_DATA}/output.error"
-
-                    #check error output for path to actual error report
-                    REPORT_PATH=`cat "${GATEWAY_DIAGNOSTIC_DATA}/output.error" | awk -F'"' '{print $4}'`
-                    if [[ -z "$REPORT_PATH" ]]; then
-                        REPORT_PATH=`ls -l ${GATEWAY_DIAGNOSTIC_DATA} | grep error-report.txt.gz | awk -F' ' '{print $NF}'`
-                        if [[ -n "$REPORT_PATH" ]]; then
-                            #extract filename from path
-                            REPORT_NAME=$(basename $REPORT_PATH)
-
-                            #grab error report
-                            $KUBECTL cp -n $NAMESPACE "${pod}:${REPORT_PATH}" "${GATEWAY_DIAGNOSTIC_DATA}/${REPORT_NAME}" &>/dev/null
-                        fi
-
-                        #remove link
-                        rm -f "${GATEWAY_DIAGNOSTIC_DATA}/error-report.txt.gz"
-                    else
-                        #extract filename from path
-                        REPORT_NAME=$(basename $REPORT_PATH)
-
-                        #grab error report
-                        $KUBECTL cp -n $NAMESPACE "${pod}:${REPORT_PATH}" "${GATEWAY_DIAGNOSTIC_DATA}/${REPORT_NAME}" &>/dev/null
-
-                        #clean up
-                        rm -f "${GATEWAY_DIAGNOSTIC_DATA}/output.error"
-                    fi
-                else
-                    warning="WARNING! "
-                    text="Received response code [${response}] while attempting to generate an error report on gateway.  Are calls to [127.0.0.1] being restricted?"
-                    echo -e "${COLOR_YELLOW}${warning}${COLOR_WHITE}$text${COLOR_RESET}"
-                fi
-
-                #clean up
-                kill -9 $pid
-                wait $pid &>/dev/null
-                rm -f $XML_PATH $SCRIPT_PATH
+                rm -f $XML_PATH
 
                 #reset variable
                 IS_GATEWAY=0
