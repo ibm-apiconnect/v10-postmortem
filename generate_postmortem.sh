@@ -344,9 +344,9 @@ function gatherClusterData() {
     $KUBECTL cnp status ${EDB_CLUSTER_NAME} -n ${EDB_CLUSTER_NAMESPACE} > ${CLUSTER}/${EDB_CLUSTER_NAME}/status.txt
     $KUBECTL cnp status ${EDB_CLUSTER_NAME} --verbose -n ${EDB_CLUSTER_NAMESPACE} > ${CLUSTER}/${EDB_CLUSTER_NAME}/status-verbose.txt
 
-    $KUBECTL get cluster -n ${EDB_CLUSTER_NAMESPACE} > ${CLUSTER}/${EDB_CLUSTER_NAME}/info.txt
-    $KUBECTL get cluster -o yaml -n ${EDB_CLUSTER_NAMESPACE} > ${CLUSTER}/${EDB_CLUSTER_NAME}/cluster.yaml
-    $KUBECTL describe cluster -n ${EDB_CLUSTER_NAMESPACE} > ${CLUSTER}/${EDB_CLUSTER_NAME}/describe.txt
+    $KUBECTL get cluster ${EDB_CLUSTER_NAME} -n ${EDB_CLUSTER_NAMESPACE} > ${CLUSTER}/${EDB_CLUSTER_NAME}/info.txt
+    $KUBECTL get cluster ${EDB_CLUSTER_NAME} -o yaml -n ${EDB_CLUSTER_NAMESPACE} > ${CLUSTER}/${EDB_CLUSTER_NAME}/cluster.yaml
+    $KUBECTL describe cluster ${EDB_CLUSTER_NAME} -n ${EDB_CLUSTER_NAMESPACE} > ${CLUSTER}/${EDB_CLUSTER_NAME}/describe.txt
 
 }
 
@@ -365,11 +365,20 @@ function gatherEDBPodData() {
 }
 
 function gatherEDBBackupData() {
-    $KUBECTL get backups -n ${EDB_CLUSTER_NAMESPACE} > ${CLUSTER_BACKUPS}/${EDB_CLUSTER_NAME}/backups.txt
+    $KUBECTL get backups -n ${EDB_CLUSTER_NAMESPACE} -o=jsonpath='{.items[?(@.spec.cluster.name=="'${EDB_CLUSTER_NAME}'")]}' -o wide > ${CLUSTER_BACKUPS}/${EDB_CLUSTER_NAME}/backups.txt
     for backup in ${EDB_BACKUP_NAMES}; do
         mkdir ${CLUSTER_BACKUPS}/${EDB_CLUSTER_NAME}/${backup}
         $KUBECTL get backups ${backup} -o yaml -n ${EDB_CLUSTER_NAMESPACE} > ${CLUSTER_BACKUPS}/${EDB_CLUSTER_NAME}/${backup}/backup.yaml
         $KUBECTL describe backups ${backup} -n ${EDB_CLUSTER_NAMESPACE} > ${CLUSTER_BACKUPS}/${EDB_CLUSTER_NAME}/${backup}/describe.txt
+    done
+}
+
+function gatherEDBScheduledBackupData() {
+    $KUBECTL -n ${EDB_CLUSTER_NAMESPACE} get scheduledbackups -o=jsonpath='{.items[?(@.spec.cluster.name=="'${EDB_CLUSTER_NAME}'")]}' -o wide > ${CLUSTER_SCHEDULED_BACKUPS}/${EDB_CLUSTER_NAME}/scheduledbackups.txt
+    for scheduledbackup in ${EDB_SCHEDULED_BACKUP_NAMES}; do
+        mkdir ${CLUSTER_SCHEDULED_BACKUPS}/${EDB_CLUSTER_NAME}/${scheduledbackup}
+        $KUBECTL -n ${EDB_CLUSTER_NAMESPACE} get scheduledbackups ${scheduledbackup} -o yaml > ${CLUSTER_SCHEDULED_BACKUPS}/${EDB_CLUSTER_NAME}/${scheduledbackup}/backup.yaml
+        $KUBECTL -n ${EDB_CLUSTER_NAMESPACE} describe scheduledbackups ${scheduledbackup} > ${CLUSTER_SCHEDULED_BACKUPS}/${EDB_CLUSTER_NAME}/${scheduledbackup}/describe.txt
     done
 }
 
@@ -389,7 +398,8 @@ function collectEDB {
   MGMT_CR_NAME=$($KUBECTL get mgmt -n ${EDB_CLUSTER_NAMESPACE} -o=jsonpath='{.items[0].metadata.name}')
   EDB_CLUSTER_NAME=$($KUBECTL get cluster -n ${EDB_CLUSTER_NAMESPACE} -o=jsonpath='{.items[?(@.metadata.ownerReferences[0].name=="'${MGMT_CR_NAME}'")].metadata.name}')
   EDB_POD_NAMES=$($KUBECTL get pod -l k8s.enterprisedb.io/cluster=${EDB_CLUSTER_NAME} -L role -n ${EDB_CLUSTER_NAMESPACE} -o=custom-columns=NAME:.metadata.name --no-headers)
-  EDB_BACKUP_NAMES=$($KUBECTL get backups -l k8s.enterprisedb.io/cluster=${EDB_CLUSTER_NAME} -L role -n ${EDB_CLUSTER_NAMESPACE} -o=custom-columns=NAME:.metadata.name --no-headers)
+  EDB_BACKUP_NAMES=$($KUBECTL get backups -o=jsonpath='{.items[?(@.spec.cluster.name=="'${EDB_CLUSTER_NAME}'")]}' -L role -n ${EDB_CLUSTER_NAMESPACE} -o=custom-columns=NAME:.metadata.name --no-headers)
+  EDB_SCHEDULED_BACKUP_NAMES=$($KUBECTL get scheduledBackups -o=jsonpath='{.items[?(@.spec.cluster.name=="'${EDB_CLUSTER_NAME}'")]}' -n ${EDB_CLUSTER_NAMESPACE} -o=custom-columns=NAME:.metadata.name --no-headers)
   K8S_DATA="${TEMP_PATH}/kubernetes"
   K8S_NAMESPACES="${K8S_DATA}/namespaces"
   K8S_NAMESPACES_SPECIFIC="${K8S_NAMESPACES}/${EDB_OP_NAMESPACE}"
@@ -404,6 +414,7 @@ function collectEDB {
   CLUSTER=${SPECIFIC_NS_CLUSTER}/cluster
   CLUSTER_PODS=${SPECIFIC_NS_CLUSTER}/pods
   CLUSTER_BACKUPS=${SPECIFIC_NS_CLUSTER}/backups
+  CLUSTER_SCHEDULED_BACKUPS=${SPECIFIC_NS_CLUSTER}/scheduledbackups
 
 
   mkdir ${NS}
@@ -415,6 +426,8 @@ function collectEDB {
   mkdir -p ${CLUSTER_PODS}
   mkdir ${CLUSTER_BACKUPS}
   mkdir ${CLUSTER_BACKUPS}/${EDB_CLUSTER_NAME}
+  mkdir ${CLUSTER_SCHEDULED_BACKUPS}
+  mkdir ${CLUSTER_SCHEDULED_BACKUPS}/${EDB_CLUSTER_NAME}
 
   if [[ -z "$PG_OP" ]]; then
       echo "failed to find the edb operator in the ${EDB_OP_NAMESPACE} namespace, could be in a different namespace"
@@ -440,6 +453,12 @@ function collectEDB {
       echo "failed to find the edb cluster backups in the ${EDB_CLUSTER_NAMESPACE} namespace"
   else
      gatherEDBBackupData
+  fi
+
+  if [[ -z "$EDB_SCHEDULED_BACKUP_NAMES" ]]; then
+      echo "failed to find the edb cluster scheduledBackups in the ${EDB_CLUSTER_NAMESPACE} namespace"
+  else
+     gatherEDBScheduledBackupData
   fi
 }
 
