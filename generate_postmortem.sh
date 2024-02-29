@@ -167,6 +167,7 @@ for switch in $@; do
             SPECIFIC_NAMESPACES=1
             specific_namespaces=`echo "${switch}" | cut -d'=' -f2 | tr ',' ' '`
             NAMESPACE_LIST="${specific_namespaces}"
+            AUTO_DETECT=0
             ;;
         *"--extra-namespaces"*)
             NO_PROMPT=1
@@ -481,129 +482,146 @@ fi
 #=================================================================================================================
 
 #============================================== autodetect namespaces ============================================
+
+SUBSYS_MANAGER="ISNOTSET"
+SUBSYS_ANALYTICS="ISNOTSET"
+SUBSYS_PORTAL="ISNOTSET"
+SUBSYS_GATEWAY_V5="ISNOTSET"
+SUBSYS_GATEWAY_V6="ISNOTSET"
+SUBSYS_EVENT="ISNOTSET"
+
+SUBSYS_MANAGER_COUNT=0
+SUBSYS_ANALYTICS_COUNT=0
+SUBSYS_PORTAL_COUNT=0
+SUBSYS_GATEWAY_V5_COUNT=0
+SUBSYS_GATEWAY_V6_COUNT=0
+SUBSYS_EVENT_COUNT=0
+
+CLUSTER_LIST=(ManagementCluster AnalyticsCluster PortalCluster GatewayCluster EventEndpointManager EventGatewayCluster)
+EVENT_PREFIX="eventendpo"
+ns_matches=""
+
+getClusters () {
+    CLUSTER_LIST=(ManagementCluster AnalyticsCluster PortalCluster GatewayCluster EventEndpointManager EventGatewayCluster)
+    ns=`echo "$1" | awk '{print $1}'`
+    echo "Checking namespace $ns for cluster resources"
+
+    for cluster in ${CLUSTER_LIST[@]}; do
+        OUTPUT=`$KUBECTL get -n $ns $cluster 2>/dev/null`
+        if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
+            OUTPUT=`echo "${OUTPUT}" | grep -v NAME`
+            while read line; do
+                name=`echo ${line} | awk '{print $1}'`
+                if [[ ${#name} -gt 10 ]]; then
+                    event_name=${name:0:10}
+                else
+                    event_name=$name
+                fi
+
+                case $cluster in
+                    "ManagementCluster")
+                        if [[ "${event_name}" != "${EVENT_PREFIX}"* ]]; then
+                            if [[ ${SUBSYS_MANAGER} == "ISNOTSET" ]]; then
+                                SUBSYS_MANAGER=$name
+                            else
+                                SUBSYS_MANAGER+=" ${name}"
+                            fi
+                            ((SUBSYS_MANAGER_COUNT=SUBSYS_MANAGER_COUNT+1))
+                            echo "Found ManagementCluster $event_name"
+                        fi
+                    ;;
+                    "AnalyticsCluster")
+                        if [[ ${SUBSYS_ANALYTICS} == "ISNOTSET" ]]; then
+                            SUBSYS_ANALYTICS=$name
+                        else
+                            SUBSYS_ANALYTICS+=" ${name}"
+                        fi
+                        ((SUBSYS_ANALYTICS_COUNT=SUBSYS_ANALYTICS_COUNT+1))
+                        echo "Found AnalyticsCluster $event_name"
+                    ;;
+                    "PortalCluster")
+                        if [[ "${event_name}" != "${EVENT_PREFIX}"* ]]; then
+                            if [[ ${SUBSYS_PORTAL} == "ISNOTSET" ]]; then
+                                SUBSYS_PORTAL=$name
+                            else
+                                SUBSYS_PORTAL+=" ${name}"
+                            fi
+                            ((SUBSYS_PORTAL_COUNT=SUBSYS_PORTAL_COUNT+1))
+                            echo "Found PortalCluster $event_name"
+                        fi
+                    ;;
+                    "GatewayCluster")
+                        if [[ "$name" == *"v5"* ]]; then
+                            if [[ ${SUBSYS_GATEWAY_V5} == "ISNOTSET" ]]; then
+                                SUBSYS_GATEWAY_V5=$name
+                            else
+                                SUBSYS_GATEWAY_V5+=" ${name}"
+                            fi
+                            ((SUBSYS_GATEWAY_V5_COUNT=SUBSYS_GATEWAY_V5_COUNT+1))
+                            echo "Found V5 GatewayCluster $event_name"
+                        else
+                            if [[ ${SUBSYS_GATEWAY_V6} == "ISNOTSET" ]]; then
+                                SUBSYS_GATEWAY_V6=$name
+                            else
+                                SUBSYS_GATEWAY_V6+=" ${name}"
+                            fi
+                            ((SUBSYS_GATEWAY_V6_COUNT=SUBSYS_GATEWAY_V6_COUNT+1))
+                            echo "Found V6 GatewayCluster $event_name"
+                        fi
+                    ;;
+                    "EventEndpointManager" | "EventGatewayCluster")
+                        if [[ ${SUBSYS_EVENT} == "ISNOTSET" ]]; then
+                            SUBSYS_EVENT=$event_name
+                        else
+                            SUBSYS_EVENT+=" ${event_name}"
+                        fi
+                        ((SUBSYS_EVENT_COUNT=SUBSYS_EVENT_COUNT+1))
+                        echo "Found EventEndpointManager $event_name"
+                    ;;
+                esac
+
+                if [[ "${ns_matches}" != *"${ns}"* ]]; then
+                    if [[ ${#ns_matches} -eq 0 ]]; then
+                        ns_matches=$ns
+                    else
+                        ns_matches+=" ${ns}"
+                    fi
+                fi
+            done <<< "$OUTPUT"
+        fi
+    done
+}
+
 if [[ $AUTO_DETECT -eq 1 ]]; then
     NS_LISTING=`$KUBECTL get ns 2>/dev/null | sed -e '1d' | egrep -v "kube-system|cert-manager|rook|certmanager"`
-
-    SUBSYS_MANAGER="ISNOTSET"
-    SUBSYS_ANALYTICS="ISNOTSET"
-    SUBSYS_PORTAL="ISNOTSET"
-    SUBSYS_GATEWAY_V5="ISNOTSET"
-    SUBSYS_GATEWAY_V6="ISNOTSET"
-    SUBSYS_EVENT="ISNOTSET"
-
-    SUBSYS_MANAGER_COUNT=0
-    SUBSYS_ANALYTICS_COUNT=0
-    SUBSYS_PORTAL_COUNT=0
-    SUBSYS_GATEWAY_V5_COUNT=0
-    SUBSYS_GATEWAY_V6_COUNT=0
-    SUBSYS_EVENT_COUNT=0
-
-    CLUSTER_LIST=(ManagementCluster AnalyticsCluster PortalCluster GatewayCluster EventEndpointManager EventGatewayCluster)
-    EVENT_PREFIX="eventendpo"
-    ns_matches=""
-
-
     while read line; do
-        ns=`echo "${line}" | awk '{print $1}'`
-
-        for cluster in ${CLUSTER_LIST[@]}; do
-            OUTPUT=`$KUBECTL get -n $ns $cluster 2>/dev/null`
-            if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
-                OUTPUT=`echo "${OUTPUT}" | grep -v NAME`
-                while read line; do
-                    name=`echo ${line} | awk '{print $1}'`
-                    if [[ ${#name} -gt 10 ]]; then
-                        event_name=${name:0:10}
-                    else
-                        event_name=$name
-                    fi
-
-                    case $cluster in
-                        "ManagementCluster")
-                            if [[ "${event_name}" != "${EVENT_PREFIX}"* ]]; then
-                                if [[ ${SUBSYS_MANAGER} == "ISNOTSET" ]]; then
-                                    SUBSYS_MANAGER=$name
-                                else
-                                    SUBSYS_MANAGER+=" ${name}"
-                                fi
-                                ((SUBSYS_MANAGER_COUNT=SUBSYS_MANAGER_COUNT+1))
-                            fi
-                        ;;
-                        "AnalyticsCluster")
-                            if [[ ${SUBSYS_ANALYTICS} == "ISNOTSET" ]]; then
-                                SUBSYS_ANALYTICS=$name
-                            else
-                                SUBSYS_ANALYTICS+=" ${name}"
-                            fi
-                            ((SUBSYS_ANALYTICS_COUNT=SUBSYS_ANALYTICS_COUNT+1))
-                        ;;
-                        "PortalCluster")
-                            if [[ "${event_name}" != "${EVENT_PREFIX}"* ]]; then
-                                if [[ ${SUBSYS_PORTAL} == "ISNOTSET" ]]; then
-                                    SUBSYS_PORTAL=$name
-                                else
-                                    SUBSYS_PORTAL+=" ${name}"
-                                fi
-                                ((SUBSYS_PORTAL_COUNT=SUBSYS_PORTAL_COUNT+1))
-                            fi
-                        ;;
-                        "GatewayCluster")
-                            if [[ "$name" == *"v5"* ]]; then
-                                if [[ ${SUBSYS_GATEWAY_V5} == "ISNOTSET" ]]; then
-                                    SUBSYS_GATEWAY_V5=$name
-                                else
-                                    SUBSYS_GATEWAY_V5+=" ${name}"
-                                fi
-                                ((SUBSYS_GATEWAY_V5_COUNT=SUBSYS_GATEWAY_V5_COUNT+1))
-                            else
-                                if [[ ${SUBSYS_GATEWAY_V6} == "ISNOTSET" ]]; then
-                                    SUBSYS_GATEWAY_V6=$name
-                                else
-                                    SUBSYS_GATEWAY_V6+=" ${name}"
-                                fi
-                                ((SUBSYS_GATEWAY_V6_COUNT=SUBSYS_GATEWAY_V6_COUNT+1))
-                            fi
-                        ;;
-                        "EventEndpointManager" | "EventGatewayCluster")
-                            if [[ ${SUBSYS_EVENT} == "ISNOTSET" ]]; then
-                                SUBSYS_EVENT=$event_name
-                            else
-                                SUBSYS_EVENT+=" ${event_name}"
-                            fi
-                            ((SUBSYS_EVENT_COUNT=SUBSYS_EVENT_COUNT+1))
-                        ;;
-                    esac
-
-                    if [[ "${ns_matches}" != *"${ns}"* ]]; then
-                        if [[ ${#ns_matches} -eq 0 ]]; then
-                            ns_matches=$ns
-                        else
-                            ns_matches+=" ${ns}"
-                        fi
-                    fi
-                done <<< "$OUTPUT"
-            fi
-        done
+        getClusters $line
     done <<< "$NS_LISTING"
-
-    space_count=`echo "${ns_matches}" | tr -cd ' \t' | wc -c`
-    [ $SPECIFIC_NAMESPACES -eq 1 ] || echo -e "Auto-detected namespaces [${ns_matches}]."
-
-    if [[ $space_count -gt 0 && $NO_PROMPT -eq 0 ]]; then
-        read -p "Proceed with data collection (y/n)? " yn
-        case $yn in
-            [Yy]* )
-                echo -e "Proceeding..."
-                ;;
-            [Nn]* )
-                echo -e "Exiting..."
-                exit 1
-                ;;
-        esac
-    fi
-
-    [ $SPECIFIC_NAMESPACES -eq 1 ] || NAMESPACE_LIST+=" ${ns_matches}"
+else
+    NS_LISTING=$(echo $NAMESPACE_LIST | tr ',' ' ')
+    for ns in $NS_LISTING; do
+        getClusters $ns
+    done
 fi
+
+space_count=`echo "${ns_matches}" | tr -cd ' \t' | wc -c`
+[ $SPECIFIC_NAMESPACES -eq 1 ] || echo -e "Auto-detected namespaces [${ns_matches}]."
+
+if [[ $space_count -gt 0 && $NO_PROMPT -eq 0 ]]; then
+    read -p "Proceed with data collection (y/n)? " yn
+    case $yn in
+        [Yy]* )
+            echo -e "Proceeding..."
+            ;;
+        [Nn]* )
+            echo -e "Exiting..."
+            exit 1
+            ;;
+    esac
+fi
+
+[ $SPECIFIC_NAMESPACES -eq 1 ] || NAMESPACE_LIST+=" ${ns_matches}"
+
 #=================================================================================================================
 
 #============================================= pull kubernetes data ==============================================
@@ -837,6 +855,7 @@ $KUBECTL api-resources &> "${K8S_CLUSTER_LIST_DATA}/api-resources.out"
 
 #---------------------------------- collect namespace specific data -----------------------------------
 for NAMESPACE in $NAMESPACE_LIST; do
+    echo "---- Collecting data in namespace: $NAMESPACE ----"
 
     K8S_NAMESPACES_SPECIFIC="${K8S_NAMESPACES}/${NAMESPACE}"
 
@@ -1238,6 +1257,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
             if [[ "$pod" == "NAME" ]]; then
                 continue
             fi
+            echo "-- pod: $pod --"
             ready=`echo "$line" | awk -F ' ' '{print $2}' | awk -F'/' '{ print ($1==$2) ? "1" : "0" }'`
             status=`echo "$line" | awk -F ' ' '{print $3}'`
             node=`echo "$line" | awk -F ' ' '{print $7}'`
@@ -1320,54 +1340,48 @@ for NAMESPACE in $NAMESPACE_LIST; do
                             ;;
                         *)
                             #check for multiple subsystems
-                            if [[ SUBSYS_MANAGER_COUNT -gt 1 ]]; then
-                                for s in $SUBSYS_MANAGER; do
-                                    if [[ "${pod}" == "${s}-"* ]]; then
-                                        SUBFOLDER="manager"
-                                        subManager=$s
-                                    fi
-                                done
-                            elif [[ SUBSYS_ANALYTICS_COUNT -gt 1 ]]; then
-                                for s in $SUBSYS_ANALYTICS; do
-                                    if [[ "${pod}" == "${s}-"* ]]; then
-                                        SUBFOLDER="analytics"
-                                        subAnalytics=$s
-                                        IS_ANALYTICS=1
-                                    fi
-                                done
-                            elif [[ SUBSYS_PORTAL_COUNT -gt 1 ]]; then
-                                for s in $SUBSYS_PORTAL; do
-                                    if [[ "${pod}" == "${s}-"* ]]; then
-                                        SUBFOLDER="portal"
-                                        subPortal=$s
-                                        IS_PORTAL=1
-                                    fi
-                                done
-                            elif [[ SUBSYS_GATEWAY_V5_COUNT -gt 1 ]]; then
-                                for s in $SUBSYS_GATEWAY_V5; do
-                                    if [[ "${pod}" == "${s}-"* ]]; then
-                                        SUBFOLDER="gateway"
-                                        subGateway=$s
-                                        IS_GATEWAY=1
-                                    fi
-                                done
-                            elif [[ SUBSYS_GATEWAY_V6_COUNT -gt 1 ]]; then
-                                for s in $SUBSYS_GATEWAY_V6; do
-                                    if [[ "${pod}" == "${s}-"* ]]; then
-                                        SUBFOLDER="gateway"
-                                        subGateway=$s
-                                        IS_GATEWAY=1
-                                    fi
-                                done
-                            elif [[ SUBSYS_EVENT_COUNT -gt 1 ]]; then
-                                for s in $SUBSYS_EVENT; do
-                                    if [[ "${pod}" == "${s}-"* ]]; then
-                                        SUBFOLDER="event"
-                                        subEvent=$s
-                                        IS_EVENT=1
-                                    fi
-                                done
-                            else
+                            for s in $SUBSYS_MANAGER; do
+                                if [[ "${pod}" == "${s}-"* ]]; then
+                                    SUBFOLDER="manager"
+                                    subManager=$s
+                                fi
+                            done
+                            for s in $SUBSYS_ANALYTICS; do
+                                if [[ "${pod}" == "${s}-"* ]]; then
+                                    SUBFOLDER="analytics"
+                                    subAnalytics=$s
+                                    IS_ANALYTICS=1
+                                fi
+                            done
+                            for s in $SUBSYS_PORTAL; do
+                                if [[ "${pod}" == "${s}-"* ]]; then
+                                    SUBFOLDER="portal"
+                                    subPortal=$s
+                                    IS_PORTAL=1
+                                fi
+                            done
+                            for s in $SUBSYS_GATEWAY_V5; do
+                                if [[ "${pod}" == "${s}-"* ]]; then
+                                    SUBFOLDER="gateway"
+                                    subGateway=$s
+                                    IS_GATEWAY=1
+                                fi
+                            done
+                            for s in $SUBSYS_GATEWAY_V6; do
+                                if [[ "${pod}" == "${s}-"* ]]; then
+                                    SUBFOLDER="gateway"
+                                    subGateway=$s
+                                    IS_GATEWAY=1
+                                fi
+                            done
+                            for s in $SUBSYS_EVENT; do
+                                if [[ "${pod}" == "${s}-"* ]]; then
+                                    SUBFOLDER="event"
+                                    subEvent=$s
+                                    IS_EVENT=1
+                                fi
+                            done
+                            if [[ -z $SUBFOLDER ]]; then
                                 SUBFOLDER="other"
                             fi
                     esac
@@ -1402,7 +1416,8 @@ for NAMESPACE in $NAMESPACE_LIST; do
             fi
 
             #grab postgres data
-            if [[ $DIAG_MANAGER -eq 1 && $COLLECT_CRUNCHY -eq 1 && "$status" == "Running" && "$pod" == *"postgres"* && ! "$pod" =~ (backrest|pgbouncer|stanza|operator) ]]; then
+            if [[ $DIAG_MANAGER -eq 1 && $COLLECT_CRUNCHY -eq 1 && "$status" == "Running" && "$pod" == *"postgres"* && ! "$pod" =~ (backrest|pgbouncer|stanza|operator|backup) ]]; then
+                echo "Collecting manager diagnostic data..."
                 target_dir="${K8S_NAMESPACES_POD_DIAGNOSTIC_DATA}/postgres/${pod}-pglogs"
                 health_dir="${K8S_NAMESPACES_POD_DIAGNOSTIC_DATA}/postgres/${pod}-health-stats"
 
@@ -1488,6 +1503,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
 
             #grab gateway diagnostic data
             if [[ $DIAG_GATEWAY -eq 1 && $IS_GATEWAY -eq 1 && $ready -eq 1 && "$status" == "Running" && "$pod" != *"monitor"* && "$pod" != *"operator"* ]]; then
+                echo "Collecting gateway diagnostic data..."
                 GATEWAY_DIAGNOSTIC_DATA="${K8S_NAMESPACES_POD_DIAGNOSTIC_DATA}/gateway/${pod}"
                 mkdir -p $GATEWAY_DIAGNOSTIC_DATA
 
@@ -1510,9 +1526,9 @@ for NAMESPACE in $NAMESPACE_LIST; do
 
                 #POST XML to gateway, start error report creation
                 admin_password="admin"
-                secret_name=`$KUBECTL get secrets -n $NAMESPACE | egrep 'admin-secret|gw-admin' | awk '{print $1}'`
+                secret_name=$($KUBECTL get DataPowerService $subGateway -n $NAMESPACE -o jsonpath='{.spec.users[?(@.name=="admin")].passwordSecret}')
                 if [[ ${#secret_name} -gt 0 ]]; then
-                    admin_password=`$KUBECTL get secret $secret_name -o jsonpath='{.data.password}' | base64 -d`
+                    admin_password=`$KUBECTL -n $NAMESPACE get secret $secret_name -o jsonpath='{.data.password}' | base64 -d`
                 fi
 
                 response=`curl -k -X POST --write-out %{http_code} --silent --output /dev/null \
@@ -1572,6 +1588,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
 
             #grab analytics diagnostic data
             if [[ $DIAG_ANALYTICS -eq 1 && $IS_ANALYTICS -eq 1 && $ready -eq 1 && "$status" == "Running" ]]; then
+                echo "Collecting analytics diagnostic data..."
                 ANALYTICS_DIAGNOSTIC_DATA="${K8S_NAMESPACES_POD_DIAGNOSTIC_DATA}/analytics/${pod}"
                 mkdir -p $ANALYTICS_DIAGNOSTIC_DATA
 
@@ -1608,6 +1625,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
 
                 #grab portal data
                 if [[ $DIAG_PORTAL -eq 1 && $IS_PORTAL -eq 1 && "$status" == "Running" ]]; then
+                    echo "Collecting portal diagnostic data..."
                     PORTAL_DIAGNOSTIC_DATA="${K8S_NAMESPACES_POD_DIAGNOSTIC_DATA}/portal/${pod}/${container}"
 
                     echo "${pod}" | grep -q "www"
