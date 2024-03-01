@@ -1530,6 +1530,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
 
             #grab gateway diagnostic data
             if [[ $DIAG_GATEWAY -eq 1 && $IS_GATEWAY -eq 1 && $ready -eq 1 && "$status" == "Running" && "$pod" != *"monitor"* && "$pod" != *"operator"* ]]; then
+                echo "Collecting gateway diagnostic data..."
                 GATEWAY_DIAGNOSTIC_DATA="${K8S_NAMESPACES_POD_DIAGNOSTIC_DATA}/gateway/${pod}"
                 mkdir -p $GATEWAY_DIAGNOSTIC_DATA
 
@@ -1552,9 +1553,9 @@ for NAMESPACE in $NAMESPACE_LIST; do
 
                 #POST XML to gateway, start error report creation
                 admin_password="admin"
-                secret_name=`$KUBECTL get secrets -n $NAMESPACE | egrep 'admin-secret|gw-admin' | awk '{print $1}'`
+                secret_name=$($KUBECTL get DataPowerService $subGateway -n $NAMESPACE -o jsonpath='{.spec.users[?(@.name=="admin")].passwordSecret}')
                 if [[ ${#secret_name} -gt 0 ]]; then
-                    admin_password=`$KUBECTL get secret $secret_name -o jsonpath='{.data.password}' | base64 -d`
+                    admin_password=`$KUBECTL -n $NAMESPACE get secret $secret_name -o jsonpath='{.data.password}' | base64 -d`
                 fi
 
                 response=`curl -k -X POST --write-out %{http_code} --silent --output /dev/null \
