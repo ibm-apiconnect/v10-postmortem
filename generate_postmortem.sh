@@ -1196,8 +1196,8 @@ for NAMESPACE in $NAMESPACE_LIST; do
             $KUBECTL describe deployment $deployment -n $NAMESPACE &>"${K8S_NAMESPACES_DEPLOYMENT_DESCRIBE_DATA}/${deployment}.out"
             [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_DEPLOYMENT_DESCRIBE_DATA}/${deployment}.out"
 
-            $KUBECTL get deployment $deployment -o yaml -n $NAMESPACE &>"${K8S_NAMESPACES_DEPLOYMENT_DESCRIBE_DATA}/${deployment}.out"
-            [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_DEPLOYMENT_DESCRIBE_DATA}/${deployment}.out"
+            $KUBECTL get deployment $deployment -o yaml -n $NAMESPACE &>"${K8S_NAMESPACES_DEPLOYMENT_YAML_OUTPUT}/${deployment}.out"
+            [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_DEPLOYMENT_YAML_OUTPUT}/${deployment}.out"
         done <<< "$OUTPUT"
     else
         rm -fr $K8S_NAMESPACES_DEPLOYMENT_DATA
