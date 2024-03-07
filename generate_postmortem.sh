@@ -1180,8 +1180,8 @@ for NAMESPACE in $NAMESPACE_LIST; do
             $KUBECTL describe daemonset $ds -n $NAMESPACE &>"${K8S_NAMESPACES_DAEMONSET_DESCRIBE_DATA}/${ds}.out"
             [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_DAEMONSET_DESCRIBE_DATA}/${ds}.out"
 
-            $KUBECTL get daemonset $ds -o yaml -n $NAMESPACE &>"${K8S_NAMESPACES_DAEMONSET_YAML_OUTPUT}/${ds}.out"
-            [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_DAEMONSET_YAML_OUTPUT}/${ds}.out"
+            $KUBECTL get daemonset $ds -o yaml -n $NAMESPACE &>"${K8S_NAMESPACES_DAEMONSET_YAML_OUTPUT}/${ds}.yaml"
+            [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_DAEMONSET_YAML_OUTPUT}/${ds}.yaml"
         done <<< "$OUTPUT"
     else
         rm -fr $K8S_NAMESPACES_DAEMONSET_DATA
@@ -1196,8 +1196,8 @@ for NAMESPACE in $NAMESPACE_LIST; do
             $KUBECTL describe deployment $deployment -n $NAMESPACE &>"${K8S_NAMESPACES_DEPLOYMENT_DESCRIBE_DATA}/${deployment}.out"
             [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_DEPLOYMENT_DESCRIBE_DATA}/${deployment}.out"
 
-            $KUBECTL get deployment $deployment -o yaml -n $NAMESPACE &>"${K8S_NAMESPACES_DEPLOYMENT_YAML_OUTPUT}/${deployment}.out"
-            [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_DEPLOYMENT_YAML_OUTPUT}/${deployment}.out"
+            $KUBECTL get deployment $deployment -o yaml -n $NAMESPACE &>"${K8S_NAMESPACES_DEPLOYMENT_YAML_OUTPUT}/${deployment}.yaml"
+            [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_DEPLOYMENT_YAML_OUTPUT}/${deployment}.yaml"
         done <<< "$OUTPUT"
     else
         rm -fr $K8S_NAMESPACES_DEPLOYMENT_DATA
@@ -1212,8 +1212,8 @@ for NAMESPACE in $NAMESPACE_LIST; do
             $KUBECTL describe endpoints $endpoint -n $NAMESPACE &>"${K8S_NAMESPACES_ENDPOINT_DESCRIBE_DATA}/${endpoint}.out"
             [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_ENDPOINT_DESCRIBE_DATA}/${endpoint}.out"
 
-            $KUBECTL get endpoints $endpoint -o yaml -n $NAMESPACE &>"${K8S_NAMESPACES_ENDPOINT_YAML_OUTPUT}/${endpoint}.out"
-            [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_ENDPOINT_YAML_OUTPUT}/${endpoint}.out"
+            $KUBECTL get endpoints $endpoint -o yaml -n $NAMESPACE &>"${K8S_NAMESPACES_ENDPOINT_YAML_OUTPUT}/${endpoint}.yaml"
+            [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_ENDPOINT_YAML_OUTPUT}/${endpoint}.yaml"
         done <<< "$OUTPUT"
     else
         rm -fr $K8S_NAMESPACES_ENDPOINT_DATA
@@ -1228,8 +1228,8 @@ for NAMESPACE in $NAMESPACE_LIST; do
             $KUBECTL describe job $job -n $NAMESPACE &> "${K8S_NAMESPACES_JOB_DESCRIBE_DATA}/${job}.out"
             [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_JOB_DESCRIBE_DATA}/${job}.out"
 
-            $KUBECTL get job $job -o yaml -n $NAMESPACE &>"${K8S_NAMESPACES_JOB_YAML_OUTPUT}/${job}.out"
-            [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_JOB_YAML_OUTPUT}/${job}.out"
+            $KUBECTL get job $job -o yaml -n $NAMESPACE &>"${K8S_NAMESPACES_JOB_YAML_OUTPUT}/${job}.yaml"
+            [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_JOB_YAML_OUTPUT}/${job}.yaml"
         done <<< "$OUTPUT"
     else
         rm -fr $K8S_NAMESPACES_JOB_DATA
@@ -1710,8 +1710,8 @@ for NAMESPACE in $NAMESPACE_LIST; do
             $KUBECTL describe replicaset $rs -n $NAMESPACE &>"${K8S_NAMESPACES_REPLICASET_DESCRIBE_DATA}/${rs}.out"
             [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_REPLICASET_DESCRIBE_DATA}/${rs}.out"
 
-            $KUBECTL get replicaset $rs -o yaml -n $NAMESPACE &>"${K8S_NAMESPACES_REPLICASET_YAML_OUTPUT}/${rs}.out"
-            [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_REPLICASET_YAML_OUTPUT}/${rs}.out"
+            $KUBECTL get replicaset $rs -o yaml -n $NAMESPACE &>"${K8S_NAMESPACES_REPLICASET_YAML_OUTPUT}/${rs}.yaml"
+            [ $? -eq 0 ] || rm -f "${K8S_NAMESPACES_REPLICASET_YAML_OUTPUT}/${rs}.yaml"
         done <<< "$OUTPUT"
     else
         rm -fr $K8S_NAMESPACES_REPLICASET_DATA
@@ -1897,8 +1897,8 @@ for NAMESPACE in $NAMESPACE_LIST; do
                 $KUBECTL describe InstallPlan $ip -n $NAMESPACE &>"${OCP_INSTALL_PLAN_DESCRIBE_DATA}/${ip}.out"
                 [ $? -eq 0 ] || rm -f "${OCP_INSTALL_PLAN_DESCRIBE_DATA}/${ip}.out"
 
-                $KUBECTL get InstallPlan $ip -o yaml -n $NAMESPACE &>"${OCP_INSTALL_PLAN_YAML_OUTPUT}/${ip}.out"
-                [ $? -eq 0 ] || rm -f "${OCP_INSTALL_PLAN_YAML_OUTPUT}/${ip}.out"
+                $KUBECTL get InstallPlan $ip -o yaml -n $NAMESPACE &>"${OCP_INSTALL_PLAN_YAML_OUTPUT}/${ip}.yaml"
+                [ $? -eq 0 ] || rm -f "${OCP_INSTALL_PLAN_YAML_OUTPUT}/${ip}.yaml"
             done <<< "$OUTPUT"
         else
             rm -fr $OCP_INSTALL_PLAN_DATA
@@ -1912,8 +1912,8 @@ for NAMESPACE in $NAMESPACE_LIST; do
                 $KUBECTL describe Subscription $sub -n $NAMESPACE &>"${OCP_SUBSCRIPTION_DESCRIBE_DATA}/${sub}.out"
                 [ $? -eq 0 ] || rm -f "${OCP_SUBSCRIPTION_DESCRIBE_DATA}/${sub}.out"
 
-                $KUBECTL get Subscription $sub -o yaml -n $NAMESPACE &>"${OCP_SUBSCRIPTION_YAML_OUTPUT}/${sub}.out"
-                [ $? -eq 0 ] || rm -f "${OCP_SUBSCRIPTION_YAML_OUTPUT}/${sub}.out"
+                $KUBECTL get Subscription $sub -o yaml -n $NAMESPACE &>"${OCP_SUBSCRIPTION_YAML_OUTPUT}/${sub}.yaml"
+                [ $? -eq 0 ] || rm -f "${OCP_SUBSCRIPTION_YAML_OUTPUT}/${sub}.yaml"
             done <<< "$OUTPUT"
         else
             rm -fr $OCP_SUBSCRIPTION_DATA
@@ -1927,8 +1927,8 @@ for NAMESPACE in $NAMESPACE_LIST; do
                 $KUBECTL describe ClusterServiceVersion $csv -n $NAMESPACE &>"${OCP_CLUSTER_SERVICE_VERSION_DESCRIBE_DATA}/${csv}.out"
                 [ $? -eq 0 ] || rm -f "${OCP_CLUSTER_SERVICE_VERSION_DESCRIBE_DATA}/${csv}.out"
 
-                $KUBECTL get ClusterServiceVersion $csv -o yaml -n $NAMESPACE &>"${OCP_CLUSTER_SERVICE_VERSION_YAML_OUTPUT}/${csv}.out"
-                [ $? -eq 0 ] || rm -f "${OCP_CLUSTER_SERVICE_VERSION_YAML_OUTPUT}/${csv}.out"
+                $KUBECTL get ClusterServiceVersion $csv -o yaml -n $NAMESPACE &>"${OCP_CLUSTER_SERVICE_VERSION_YAML_OUTPUT}/${csv}.yaml"
+                [ $? -eq 0 ] || rm -f "${OCP_CLUSTER_SERVICE_VERSION_YAML_OUTPUT}/${csv}.yaml"
             done <<< "$OUTPUT"
         else
             rm -fr $OCP_CLUSTER_SERVICE_VERSION_DATA
@@ -1939,8 +1939,8 @@ for NAMESPACE in $NAMESPACE_LIST; do
             echo "$OUTPUT" > "${OCP_CATALOG_SOURCE_DATA}/ocp-catalog-source.out"
             while read line; do
                 cs=`echo "$line" | cut -d' ' -f1`
-                $KUBECTL get catalogsource $cs -o yaml -n $NAMESPACE &>"${OCP_CATALOG_SOURCE_DATA_YAML_OUTPUT}/${cs}.out"
-                [ $? -eq 0 ] || rm -f "${OCP_CATALOG_SOURCE_DATA_YAML_OUTPUT}/${cs}.out"
+                $KUBECTL get catalogsource $cs -o yaml -n $NAMESPACE &>"${OCP_CATALOG_SOURCE_DATA_YAML_OUTPUT}/${cs}.yaml"
+                [ $? -eq 0 ] || rm -f "${OCP_CATALOG_SOURCE_DATA_YAML_OUTPUT}/${cs}.yaml"
             done <<< "$OUTPUT"
         else
             rm -fr $OCP_CATALOG_SOURCE_DATA
