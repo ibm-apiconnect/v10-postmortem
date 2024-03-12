@@ -767,7 +767,7 @@ fi
 OUTPUT=`$KUBECTL get storageclasses 2>/dev/null`
 if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
     echo "$OUTPUT" > "${K8S_CLUSTER_STORAGECLASS_DATA}/storageclasses.out"
-    while read $line; do
+    while read line; do
         sc=`echo "$line" | cut -d' ' -f1`
         $KUBECTL describe storageclasses $sc &>"${K8S_CLUSTER_STORAGECLASS_DESCRIBE_DATA}/${sc}.out"
         [ $? -eq 0 ] || rm -f "${K8S_CLUSTER_STORAGECLASS_DESCRIBE_DATA}/${sc}.out"
