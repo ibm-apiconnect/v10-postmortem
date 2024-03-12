@@ -1746,7 +1746,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
     #grab role service account data
     OUTPUT=`$KUBECTL get sa -n $NAMESPACE 2>/dev/null`
     if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
-        echo "$OUTPUT" > "${K8S_NAMESPACES_SA_DATA}/sa.out"
+        echo "$OUTPUT" > "${K8S_NAMESPACES_SA_DATA}/service_accounts.out"
         while read line; do
             sa=`echo "$line" | cut -d' ' -f1`
             $KUBECTL describe sa $sa -n $NAMESPACE &> "${K8S_NAMESPACES_SA_DESCRIBE_DATA}/${sa}.out"
