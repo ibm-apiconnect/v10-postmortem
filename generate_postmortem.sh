@@ -1174,7 +1174,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
     #grab daemonset data
     OUTPUT=`$KUBECTL get daemonset -n $NAMESPACE 2>/dev/null`
     if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
-        echo "$OUTPUT" > "${K8S_NAMESPACES_DAEMONSET_DATA}/daemonset.out"
+        echo "$OUTPUT" > "${K8S_NAMESPACES_DAEMONSET_DATA}/daemonsets.out"
         while read line; do
             ds=`echo "$line" | cut -d' ' -f1`
             $KUBECTL describe daemonset $ds -n $NAMESPACE &>"${K8S_NAMESPACES_DAEMONSET_DESCRIBE_DATA}/${ds}.out"
@@ -1704,7 +1704,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
     #grab replicaset data
     OUTPUT=`$KUBECTL get replicaset -n $NAMESPACE 2>/dev/null`
     if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
-        echo "$OUTPUT" > "${K8S_NAMESPACES_REPLICASET_DATA}/replicaset.out"
+        echo "$OUTPUT" > "${K8S_NAMESPACES_REPLICASET_DATA}/replicasets.out"
         while read line; do
             rs=`echo "$line" | cut -d' ' -f1`
             $KUBECTL describe replicaset $rs -n $NAMESPACE &>"${K8S_NAMESPACES_REPLICASET_DESCRIBE_DATA}/${rs}.out"
@@ -1936,7 +1936,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
 
         OUTPUT=`$KUBECTL get catalogsource -n $NAMESPACE 2>/dev/null`
         if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
-            echo "$OUTPUT" > "${OCP_CATALOG_SOURCE_DATA}/ocp-catalog-source.out"
+            echo "$OUTPUT" > "${OCP_CATALOG_SOURCE_DATA}/catalog_source.out"
             while read line; do
                 cs=`echo "$line" | cut -d' ' -f1`
                 $KUBECTL get catalogsource $cs -o yaml -n $NAMESPACE &>"${OCP_CATALOG_SOURCE_DATA_YAML_OUTPUT}/${cs}.yaml"
