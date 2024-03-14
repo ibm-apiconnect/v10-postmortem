@@ -648,10 +648,10 @@ K8S_CLUSTER_STORAGECLASS_DESCRIBE_DATA="${K8S_CLUSTER_STORAGECLASS_DATA}/describ
 
 K8S_CLUSTER_PERFORMANCE="${K8S_CLUSTER}/performance"
 
-K8S_CLUSTER_VALIDATINGWEBHOOK_CONFIGURATION="${K8S_CLUSTER}/validatingwebhookconfiguration"
+K8S_CLUSTER_VALIDATINGWEBHOOK_CONFIGURATION="${K8S_CLUSTER}/validatingwebhookconfigurations"
 K8S_CLUSTER_VALIDATINGWEBHOOK_YAML_OUTPUT="${K8S_CLUSTER_VALIDATINGWEBHOOK_CONFIGURATION}/yaml"
 
-K8S_CLUSTER_MUTATINGWEBHOOK_CONFIGURATION="${K8S_CLUSTER}/mutatingwebhookconfiguration"
+K8S_CLUSTER_MUTATINGWEBHOOK_CONFIGURATION="${K8S_CLUSTER}/mutatingwebhookconfigurations"
 K8S_CLUSTER_MUTATINGWEBHOOK_YAML_OUTPUT="${K8S_CLUSTER_MUTATINGWEBHOOK_CONFIGURATION}/yaml"
 
 
@@ -812,7 +812,7 @@ fi
 #grab validataingwebhookconfiguation data
 OUTPUT=`$KUBECTL get validatingwebhookconfiguration 2>/dev/null`
 if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
-    echo "$OUTPUT" > "${K8S_CLUSTER_VALIDATINGWEBHOOK_CONFIGURATION}/validatingwebhookconfiguration.out"
+    echo "$OUTPUT" > "${K8S_CLUSTER_VALIDATINGWEBHOOK_CONFIGURATION}/validatingwebhookconfigurations.out"
     while read line; do
         vwc=`echo "$line" | cut -d' ' -f1`
         $KUBECTL get validatingwebhookconfiguration $vwc -o yaml &> "${K8S_CLUSTER_VALIDATINGWEBHOOK_YAML_OUTPUT}/${vwc}.yaml"
@@ -826,7 +826,7 @@ fi
 #grab mutatingwebhookconfiguration data
 OUTPUT=`$KUBECTL get mutatingwebhookconfiguration 2>/dev/null`
 if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
-    echo "$OUTPUT" > "${K8S_CLUSTER_MUTATINGWEBHOOK_CONFIGURATION}/mutatingwebhookconfiguration.out"
+    echo "$OUTPUT" > "${K8S_CLUSTER_MUTATINGWEBHOOK_CONFIGURATION}/mutatingwebhookconfigurations.out"
     while read line; do
         mwc=`echo "$line" | cut -d' ' -f1`
         $KUBECTL get mutatingwebhookconfiguration $mwc -o yaml &> "${K8S_CLUSTER_MUTATINGWEBHOOK_YAML_OUTPUT}/${mwc}.yaml"
