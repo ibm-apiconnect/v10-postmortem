@@ -9,9 +9,9 @@
 #
 
 #parse passed arguments
-NUMERICALVERSION=33
-PMCOMMITDATE='Fri Mar  8 00:06:11 UTC 2024'
-PMCOMMIT='7e4bbf0aaf5b94e83e3d804422a1e15f6fdfa90f'
+NUMERICALVERSION=34
+PMCOMMITDATE='Thu Mar 14 23:28:34 UTC 2024'
+PMCOMMIT='412c81c880c9c6ea91846332d478239f7ea8abf5'
 PMCOMMITURL="https://github.com/ibm-apiconnect/v10-postmortem/blob/$PMCOMMIT/generate_postmortem.sh"
 print_postmortem_version(){
     echo "Postmortem Version: $NUMERICALVERSION, Date: $PMCOMMITDATE, URL: $PMCOMMITURL"
