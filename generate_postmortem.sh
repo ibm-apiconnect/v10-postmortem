@@ -1875,7 +1875,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
         OCP_CLUSTER_SERVICE_VERSION_DESCRIBE_DATA="${OCP_CLUSTER_SERVICE_VERSION_DATA}/describe"
         OCP_CLUSTER_SERVICE_VERSION_YAML_OUTPUT="${OCP_CLUSTER_SERVICE_VERSION_DATA}/yaml"
 
-        OCP_CATALOG_SOURCE_DATA="${K8S_NAMESPACES_SPECIFIC}/catalog_source"
+        OCP_CATALOG_SOURCE_DATA="${K8S_NAMESPACES_SPECIFIC}/catalog_sources"
         OCP_CATALOG_SOURCE_DATA_YAML_OUTPUT="${OCP_CATALOG_SOURCE_DATA}/yaml"
 
         mkdir -p $OCP_INSTALL_PLAN_DESCRIBE_DATA
@@ -1936,7 +1936,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
 
         OUTPUT=`$KUBECTL get catalogsource -n $NAMESPACE 2>/dev/null`
         if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
-            echo "$OUTPUT" > "${OCP_CATALOG_SOURCE_DATA}/catalog_source.out"
+            echo "$OUTPUT" > "${OCP_CATALOG_SOURCE_DATA}/catalog_sources.out"
             while read line; do
                 cs=`echo "$line" | cut -d' ' -f1`
                 $KUBECTL get catalogsource $cs -o yaml -n $NAMESPACE &>"${OCP_CATALOG_SOURCE_DATA_YAML_OUTPUT}/${cs}.yaml"
