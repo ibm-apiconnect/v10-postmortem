@@ -693,9 +693,9 @@ if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
         describe_stdout=`$KUBECTL describe node $name 2>/dev/null`
         if [[ $? -eq 0 && ${#describe_stdout} -gt 0 ]]; then
             if [[ -z "$role" ]]; then
-                echo "$describe_stdout" > "${K8S_CLUSTER_NODE_DESCRIBE_DATA}/describe-${name}.out"
+                echo "$describe_stdout" > "${K8S_CLUSTER_NODE_DESCRIBE_DATA}/${name}.out"
             else
-                echo "$describe_stdout" > "${K8S_CLUSTER_NODE_DESCRIBE_DATA}/describe-${name}_${role}.out"
+                echo "$describe_stdout" > "${K8S_CLUSTER_NODE_DESCRIBE_DATA}/${name}_${role}.out"
             fi
 
             if [[ -z "$ARCHIVE_FILE" && "$role" == *"master"* ]]; then
