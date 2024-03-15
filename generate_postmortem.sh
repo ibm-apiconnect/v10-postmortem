@@ -812,7 +812,7 @@ fi
 #grab validataingwebhookconfiguation data
 OUTPUT=`$KUBECTL get validatingwebhookconfiguration 2>/dev/null`
 if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
-    echo "$OUTPUT" > "${K8S_CLUSTER_VALIDATINGWEBHOOK_CONFIGURATIONS}/validatingwebhookconfiguration.out"
+    echo "$OUTPUT" > "${K8S_CLUSTER_VALIDATINGWEBHOOK_CONFIGURATIONS}/validatingwebhookconfigurations.out"
     while read line; do
         vwc=`echo "$line" | cut -d' ' -f1`
         $KUBECTL get validatingwebhookconfiguration $vwc -o yaml &> "${K8S_CLUSTER_VALIDATINGWEBHOOK_YAML_OUTPUT}/${vwc}.yaml"
@@ -826,7 +826,7 @@ fi
 #grab mutatingwebhookconfiguration data
 OUTPUT=`$KUBECTL get mutatingwebhookconfiguration 2>/dev/null`
 if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
-    echo "$OUTPUT" > "${K8S_CLUSTER_MUTATINGWEBHOOK_CONFIGURATIONS}/mutatingwebhookconfiguration.out"
+    echo "$OUTPUT" > "${K8S_CLUSTER_MUTATINGWEBHOOK_CONFIGURATIONS}/mutatingwebhookconfigurations.out"
     while read line; do
         mwc=`echo "$line" | cut -d' ' -f1`
         $KUBECTL get mutatingwebhookconfiguration $mwc -o yaml &> "${K8S_CLUSTER_MUTATINGWEBHOOK_YAML_OUTPUT}/${mwc}.yaml"
@@ -913,7 +913,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
     K8S_NAMESPACES_ROLEBINDING_DATA="${K8S_NAMESPACES_SPECIFIC}/rolebindings"
     K8S_NAMESPACES_ROLEBINDING_DESCRIBE_DATA="${K8S_NAMESPACES_ROLEBINDING_DATA}/describe"
 
-    K8S_NAMESPACES_SA_DATA="${K8S_NAMESPACES_SPECIFIC}/service_accounts"
+    K8S_NAMESPACES_SA_DATA="${K8S_NAMESPACES_SPECIFIC}/serviceaccounts"
     K8S_NAMESPACES_SA_DESCRIBE_DATA="${K8S_NAMESPACES_SA_DATA}/describe"
 
     K8S_NAMESPACES_SECRET_DATA="${K8S_NAMESPACES_SPECIFIC}/secrets"
@@ -1174,7 +1174,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
     #grab daemonset data
     OUTPUT=`$KUBECTL get daemonset -n $NAMESPACE 2>/dev/null`
     if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
-        echo "$OUTPUT" > "${K8S_NAMESPACES_DAEMONSET_DATA}/daemonset.out"
+        echo "$OUTPUT" > "${K8S_NAMESPACES_DAEMONSET_DATA}/daemonsets.out"
         while read line; do
             ds=`echo "$line" | cut -d' ' -f1`
             $KUBECTL describe daemonset $ds -n $NAMESPACE &>"${K8S_NAMESPACES_DAEMONSET_DESCRIBE_DATA}/${ds}.out"
@@ -1704,7 +1704,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
     #grab replicaset data
     OUTPUT=`$KUBECTL get replicaset -n $NAMESPACE 2>/dev/null`
     if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
-        echo "$OUTPUT" > "${K8S_NAMESPACES_REPLICASET_DATA}/replicaset.out"
+        echo "$OUTPUT" > "${K8S_NAMESPACES_REPLICASET_DATA}/replicasets.out"
         while read line; do
             rs=`echo "$line" | cut -d' ' -f1`
             $KUBECTL describe replicaset $rs -n $NAMESPACE &>"${K8S_NAMESPACES_REPLICASET_DESCRIBE_DATA}/${rs}.out"
@@ -1744,9 +1744,9 @@ for NAMESPACE in $NAMESPACE_LIST; do
     fi
 
     #grab role service account data
-    OUTPUT=`$KUBECTL get sa -n $NAMESPACE 2>/dev/null`
+    OUTPUT=`$KUBECTL get serviceaccounts -n $NAMESPACE 2>/dev/null`
     if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
-        echo "$OUTPUT" > "${K8S_NAMESPACES_SA_DATA}/sa.out"
+        echo "$OUTPUT" > "${K8S_NAMESPACES_SA_DATA}/serviceaccounts.out"
         while read line; do
             sa=`echo "$line" | cut -d' ' -f1`
             $KUBECTL describe sa $sa -n $NAMESPACE &> "${K8S_NAMESPACES_SA_DESCRIBE_DATA}/${sa}.out"
@@ -1875,7 +1875,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
         OCP_CLUSTER_SERVICE_VERSION_DESCRIBE_DATA="${OCP_CLUSTER_SERVICE_VERSION_DATA}/describe"
         OCP_CLUSTER_SERVICE_VERSION_YAML_OUTPUT="${OCP_CLUSTER_SERVICE_VERSION_DATA}/yaml"
 
-        OCP_CATALOG_SOURCE_DATA="${K8S_NAMESPACES_SPECIFIC}/catalog_source"
+        OCP_CATALOG_SOURCE_DATA="${K8S_NAMESPACES_SPECIFIC}/catalogsources"
         OCP_CATALOG_SOURCE_DATA_YAML_OUTPUT="${OCP_CATALOG_SOURCE_DATA}/yaml"
 
         mkdir -p $OCP_INSTALL_PLAN_DESCRIBE_DATA
@@ -1936,7 +1936,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
 
         OUTPUT=`$KUBECTL get catalogsource -n $NAMESPACE 2>/dev/null`
         if [[ $? -eq 0 && ${#OUTPUT} -gt 0 ]]; then
-            echo "$OUTPUT" > "${OCP_CATALOG_SOURCE_DATA}/ocp-catalog-source.out"
+            echo "$OUTPUT" > "${OCP_CATALOG_SOURCE_DATA}/catalogsources.out"
             while read line; do
                 cs=`echo "$line" | cut -d' ' -f1`
                 $KUBECTL get catalogsource $cs -o yaml -n $NAMESPACE &>"${OCP_CATALOG_SOURCE_DATA_YAML_OUTPUT}/${cs}.yaml"
