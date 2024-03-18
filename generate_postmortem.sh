@@ -102,6 +102,7 @@ for switch in $@; do
             echo -e "--extra-namespaces:      Extra namespaces separated with commas.  Example:  --extra-namespaces=dev1,dev2,dev3"
             echo -e "--log-limit:             Set the number of lines to collect from each pod logs."
             echo -e "--no-prompt:             Do not prompt to report auto-detected namespaces."
+            echo -e "--test2": test2
             echo -e "--performance-check:     Set to run performance checks."
             echo -e "--no-history:            Do not collect user history."
             echo -e ""
