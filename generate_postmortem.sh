@@ -112,11 +112,11 @@ for switch in $@; do
             echo -e "--collect-crunchy:       Collect Crunchy mustgather."
             echo -e "--collect-edb:           Collect EDB mustgather."
             echo -e ""
-            echo -e "--diagnostic-all:        Set to enable all diagnostic data."
-            echo -e "--diagnostic-manager:    Set to include additional manager specific data."
-            echo -e "--diagnostic-gateway:    Set to include additional gateway specific data."
-            echo -e "--diagnostic-portal:     Set to include additional portal specific data."
-            echo -e "--diagnostic-analytics:  Set to include additional analytics specific data."
+            echo -e "--no-diagnostic:            Set to disable all diagnostic data."
+            echo -e "--no-manager-diagnostic:    Set to disable additional manager specific data."
+            echo -e "--no-gateway-diagnostic:    Set to disable additional gateway specific data."
+            echo -e "--no-portal-diagnostic:     Set to disable additional portal specific data."
+            echo -e "--no-analytics-diagnostic:  Set to disable additional analytics specific data."
             echo -e ""
             echo -e "--debug:                 Set to enable verbose logging."
             echo -e "--no-script-check:       Set to disable checking if the postmortem scripts are up to date."
@@ -138,23 +138,24 @@ for switch in $@; do
             NO_PROMPT=1
             NAMESPACE_LIST="kube-system"
             ;;
-        *"--diagnostic-all"*)
-            DIAG_MANAGER=1
+        *"--no-diagnostic"*)
+            NOT_DIAG_MANAGER=1
+            NOT_DIAG_GATEWAY=1
+            NOT_DIAG_PORTAL=1
+            NOT_DIAG_ANALYTICS=1
+            ;;
+        *"--no-manager-diagnostic"*)
+             NOT_DIAG_MANAGER=1
+            ;;
             DIAG_GATEWAY=1
-            DIAG_PORTAL=1
-            DIAG_ANALYTICS=1
+        *"--no-gateway-diagnostic"*)
+            NOT_DIAG_GATEWAY=1
             ;;
-        *"--diagnostic-manager"*)
-            DIAG_MANAGER=1
+        *"--no-portal-diagnostic"*)
+            NOT_DIAG_PORTAL=1
             ;;
-        *"--diagnostic-gateway"*)
-            DIAG_GATEWAY=1
-            ;;
-        *"--diagnostic-portal"*)
-            DIAG_PORTAL=1
-            ;;
-        *"--diagnostic-analytics"*)
-            DIAG_ANALYTICS=1
+        *"--no-analytics-diagnostic"*)
+            NOT_DIAG_ANALYTICS=1
             ;;
         *"--log-limit"*)
             limit=`echo "${switch}" | cut -d'=' -f2`
@@ -257,7 +258,7 @@ if [[ $? -ne 0 ]]; then
     fi
 fi
 
-if [[ $DIAG_MANAGER -eq 1 ]]; then
+if [[ $NOT_DIAG_MANAGER -eq 0 ]]; then
     EDB_CLUSTER_NAME=$($KUBECTL get cluster --all-namespaces -o=jsonpath='{.items[0].metadata.name}' 2>/dev/null)
     if [[ -z "$EDB_CLUSTER_NAME" ]]; then
         COLLECT_CRUNCHY=1
@@ -1418,7 +1419,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
             fi
 
             #grab postgres data
-            if [[ $DIAG_MANAGER -eq 1 && $COLLECT_CRUNCHY -eq 1 && "$status" == "Running" && "$pod" == *"postgres"* && ! "$pod" =~ (backrest|pgbouncer|stanza|operator|backup) ]]; then
+            if [[ $NOT_DIAG_MANAGER -eq 0 && $COLLECT_CRUNCHY -eq 1 && "$status" == "Running" && "$pod" == *"postgres"* && ! "$pod" =~ (backrest|pgbouncer|stanza|operator|backup) ]]; then
                 echo "Collecting manager diagnostic data..."
                 target_dir="${K8S_NAMESPACES_POD_DIAGNOSTIC_DATA}/postgres/${pod}-pglogs"
                 health_dir="${K8S_NAMESPACES_POD_DIAGNOSTIC_DATA}/postgres/${pod}-health-stats"
@@ -1504,7 +1505,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
             fi
 
             PG_BACKREST_REPO_POD=$($KUBECTL -n "$NAMESPACE" get po -lpgo-backrest-repo=true,vendor=crunchydata -o=custom-columns=NAME:.metadata.name --no-headers)
-            if [[ $DIAG_MANAGER -eq 1 && $COLLECT_CRUNCHY -eq 1 && "$status" == "Running" && "$pod" == "$PG_BACKREST_REPO_POD" ]]; then
+            if [[ $NOT_DIAG_MANAGER -eq 0 && $COLLECT_CRUNCHY -eq 1 && "$status" == "Running" && "$pod" == "$PG_BACKREST_REPO_POD" ]]; then
                 target_dir="${K8S_NAMESPACES_POD_DIAGNOSTIC_DATA}/postgres/${pod}"
                 mkdir -p "$target_dir"
 
@@ -1531,7 +1532,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
             fi
 
             #grab gateway diagnostic data
-            if [[ $DIAG_GATEWAY -eq 1 && $IS_GATEWAY -eq 1 && $ready -eq 1 && "$status" == "Running" && "$pod" != *"monitor"* && "$pod" != *"operator"* ]]; then
+            if [[ $NOT_DIAG_GATEWAY -eq 0 && $IS_GATEWAY -eq 1 && $ready -eq 1 && "$status" == "Running" && "$pod" != *"monitor"* && "$pod" != *"operator"* ]]; then
                 echo "Collecting gateway diagnostic data..."
                 GATEWAY_DIAGNOSTIC_DATA="${K8S_NAMESPACES_POD_DIAGNOSTIC_DATA}/gateway/${pod}"
                 mkdir -p $GATEWAY_DIAGNOSTIC_DATA
@@ -1616,7 +1617,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
             fi
 
             #grab analytics diagnostic data
-            if [[ $DIAG_ANALYTICS -eq 1 && $IS_ANALYTICS -eq 1 && $ready -eq 1 && "$status" == "Running" ]]; then
+            if [[ $NOT_DIAG_ANALYTICS -eq 0 && $IS_ANALYTICS -eq 1 && $ready -eq 1 && "$status" == "Running" ]]; then
                 echo "Collecting analytics diagnostic data..."
                 ANALYTICS_DIAGNOSTIC_DATA="${K8S_NAMESPACES_POD_DIAGNOSTIC_DATA}/analytics/${pod}"
                 mkdir -p $ANALYTICS_DIAGNOSTIC_DATA
@@ -1653,7 +1654,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
                 [[ $? -eq 0 && -s "${LOG_TARGET_PATH}/${pod}_${container}_previous.log" ]] || rm -f "${LOG_TARGET_PATH}/${pod}_${container}_previous.log"
 
                 #grab portal data
-                if [[ $DIAG_PORTAL -eq 1 && $IS_PORTAL -eq 1 && "$status" == "Running" ]]; then
+                if [[ $NOT_DIAG_PORTAL -eq 0 && $IS_PORTAL -eq 1 && "$status" == "Running" ]]; then
                     echo "Collecting portal diagnostic data..."
                     PORTAL_DIAGNOSTIC_DATA="${K8S_NAMESPACES_POD_DIAGNOSTIC_DATA}/portal/${pod}/${container}"
 
