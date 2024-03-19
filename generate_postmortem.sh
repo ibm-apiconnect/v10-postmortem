@@ -145,7 +145,7 @@ for switch in $@; do
             NOT_DIAG_ANALYTICS=1
             ;;
         *"--no-manager-diagnostic"*)
-             NOT_DIAG_MANAGER=1
+            NOT_DIAG_MANAGER=1
             ;;
             DIAG_GATEWAY=1
         *"--no-gateway-diagnostic"*)
