@@ -272,6 +272,37 @@ if [[ $NOT_DIAG_MANAGER -eq 0 ]]; then
         exit 1
     fi
 fi
+
+which apicops &> /dev/null
+if [[ $? -eq 0 ]]; then
+    APICOPS="apicops"
+else
+    if [[ ! -e /tmp/apicops-v10-linux  ]]; then
+        if [[ $NO_PROMPT -eq 0 ]]; then
+            echo -e "apicops cli not found!"
+            read -p "Download and Install apicops cli (y/n)? " yn
+            case $yn in
+                [Yy]* )
+                    echo -e "Downloading apicops......"
+                    curl -L -o /tmp/apicops-v10-linux https://github.com/ibm-apiconnect/apicops/releases/latest/download/apicops-v10-linux
+                    if [[ ! -e /tmp/apicops-v10-linux  ]]; then
+                        echo -e "Warning: Failed to download the apicops cli. Skipping to collect apicops mustgather. Please download the latest release of apicops manually before running the postmortem script. commands: curl -LO https://github.com/ibm-apiconnect/apicops/releases/latest/download/apicops-v10-linux"
+                    else
+                        chmod +x /tmp/apicops-v10-linux
+                        APICOPS="/tmp/apicops-v10-linux"
+                    fi
+                    ;;
+                [Nn]* )
+                    echo -e "Skipping to collect apicops mustgather"
+                    ;;
+            esac
+        else
+            echo -e "Skipping to collect apicops mustgather"
+        fi
+    else
+        APICOPS="/tmp/apicops-v10-linux"
+    fi
+fi
 #------------------------------------------------------------------------------------------------------
 
 #------------------------------------------ custom functions ------------------------------------------
@@ -1134,33 +1165,6 @@ for NAMESPACE in $NAMESPACE_LIST; do
     #grab apicops mustgather
     MGMT=$(kubectl get mgmt -n $NAMESPACE 2>&1)
     if [[ $MGMT != *"No resources found"* ]]; then
-
-        which apicops &> /dev/null
-        if [[ $? -eq 0 ]]; then
-            APICOPS="apicops"
-        else
-            if [[ ! -e /tmp/apicops-v10-linux  ]]; then
-                echo -e "apicops cli not found!"
-                read -p "Download and Install apicops cli (y/n)? " yn
-                case $yn in
-                    [Yy]* )
-                        echo -e "Downloading apicops......"
-                        curl -L -o /tmp/apicops-v10-linux https://github.com/ibm-apiconnect/apicops/releases/latest/download/apicops-v10-linux
-                        if [[ ! -e /tmp/apicops-v10-linux  ]]; then
-                            echo -e "Warning: Failed to download the apicops cli. Skipping to collect apicops mustgather. Please download the latest release of apicops manually before running the postmortem script. commands: curl -LO https://github.com/ibm-apiconnect/apicops/releases/latest/download/apicops-v10-linux"
-                        else
-                            chmod +x /tmp/apicops-v10-linux
-                            APICOPS="/tmp/apicops-v10-linux"
-                        fi
-                        ;;
-                    [Nn]* )
-                        echo -e "Skipping to collect apicops mustgather"
-                        ;;
-                esac
-            else
-                APICOPS="/tmp/apicops-v10-linux"
-            fi
-        fi
 
         if [ -v APICOPS ]; then
             K8S_NAMESPACES_APICOPS_DATA="${K8S_NAMESPACES_SPECIFIC}/apicops"
