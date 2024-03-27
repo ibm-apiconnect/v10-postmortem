@@ -373,8 +373,8 @@ function collectEDB {
       PG_OP=$($KUBECTL get po -n ${EDB_OP_NAMESPACE} -o=custom-columns=NAME:.metadata.name | grep -e edb-operator -e postgresql-operator-controller-manager)
   fi
 
-  MGMT_CR_NAME=$($KUBECTL get mgmt -n ${EDB_CLUSTER_NAMESPACE} -o=jsonpath='{.items[0].metadata.name}')
-  EDB_CLUSTER_NAME=$($KUBECTL get cluster -n ${EDB_CLUSTER_NAMESPACE} -o=jsonpath='{.items[?(@.metadata.ownerReferences[0].name=="'${MGMT_CR_NAME}'")].metadata.name}')
+  MGMT_CR_NAME=$($KUBECTL get mgmt -n ${EDB_CLUSTER_NAMESPACE} -o=jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+  EDB_CLUSTER_NAME=$($KUBECTL get cluster -n ${EDB_CLUSTER_NAMESPACE} -o=jsonpath='{.items[?(@.metadata.ownerReferences[0].name=="'${MGMT_CR_NAME}'")].metadata.name}' 2>/dev/null)
   EDB_POD_NAMES=$($KUBECTL get pod -l k8s.enterprisedb.io/cluster=${EDB_CLUSTER_NAME} -L role -n ${EDB_CLUSTER_NAMESPACE} -o=custom-columns=NAME:.metadata.name --no-headers)
   EDB_BACKUP_NAMES=$($KUBECTL get backups -o=jsonpath='{.items[?(@.spec.cluster.name=="'${EDB_CLUSTER_NAME}'")]}' -L role -n ${EDB_CLUSTER_NAMESPACE} -o=custom-columns=NAME:.metadata.name --no-headers)
   EDB_SCHEDULED_BACKUP_NAMES=$($KUBECTL get scheduledBackups -o=jsonpath='{.items[?(@.spec.cluster.name=="'${EDB_CLUSTER_NAME}'")]}' -n ${EDB_CLUSTER_NAMESPACE} -o=custom-columns=NAME:.metadata.name --no-headers)
@@ -400,43 +400,33 @@ function collectEDB {
   mkdir -p ${SPECIFIC_NS_CLUSTER}
   mkdir ${OPERATOR_PODS}
   mkdir ${CLUSTER}
-  mkdir ${CLUSTER}/${EDB_CLUSTER_NAME}
+  mkdir -p ${CLUSTER}/${EDB_CLUSTER_NAME}
   mkdir -p ${CLUSTER_PODS}
   mkdir ${CLUSTER_BACKUPS}
-  mkdir ${CLUSTER_BACKUPS}/${EDB_CLUSTER_NAME}
+  mkdir -p ${CLUSTER_BACKUPS}/${EDB_CLUSTER_NAME}
   mkdir ${CLUSTER_SCHEDULED_BACKUPS}
-  mkdir ${CLUSTER_SCHEDULED_BACKUPS}/${EDB_CLUSTER_NAME}
+  mkdir -p ${CLUSTER_SCHEDULED_BACKUPS}/${EDB_CLUSTER_NAME}
 
-  if [[ -z "$PG_OP" ]]; then
-      echo "failed to find the edb operator in the ${EDB_OP_NAMESPACE} namespace, could be in a different namespace"
-  else
-     gatherEdbOperatorData
+  if [[ -n "$PG_OP" ]]; then
+    echo "Found EDB operator pod $PG_OP"
+    gatherEdbOperatorData
   fi
 
-  if [[ -z "$EDB_CLUSTER_NAME" ]]; then
-      echo "failed to find the edb cluster in the ${EDB_CLUSTER_NAMESPACE} namespace"
-      exit 1
-  else
-     gatherClusterData
+  if [[ -n "$EDB_CLUSTER_NAME" ]]; then
+    echo "Found EDB Cluster $EDB_CLUSTER_NAME"
+    gatherClusterData
   fi
 
-  if [[ -z "$EDB_POD_NAMES" ]]; then
-      echo "failed to find the edb cluster pods in the ${EDB_CLUSTER_NAMESPACE} namespace"
-      exit 1
-  else
-     gatherEDBPodData
+  if [[ -n "$EDB_POD_NAMES" ]]; then
+    gatherEDBPodData
   fi
 
-  if [[ -z "$EDB_BACKUP_NAMES" ]]; then
-      echo "failed to find the edb cluster backups in the ${EDB_CLUSTER_NAMESPACE} namespace"
-  else
-     gatherEDBBackupData
+  if [[ -n "$EDB_BACKUP_NAMES" ]]; then
+    gatherEDBBackupData
   fi
 
-  if [[ -z "$EDB_SCHEDULED_BACKUP_NAMES" ]]; then
-      echo "failed to find the edb cluster scheduledBackups in the ${EDB_CLUSTER_NAMESPACE} namespace"
-  else
-     gatherEDBScheduledBackupData
+  if [[ -n "$EDB_SCHEDULED_BACKUP_NAMES" ]]; then
+    gatherEDBScheduledBackupData
   fi
 }
 
