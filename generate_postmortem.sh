@@ -194,26 +194,10 @@ for switch in $@; do
             ;;
         *"--collect-crunchy"*)
             COLLECT_CRUNCHY=1
-            SCRIPT_LOCATION="`pwd`/crunchy_gather.py"
-            if [[ ! -f $SCRIPT_LOCATION ]]; then
-                echo -e "Unable to locate script [crunchy_gather.py] in current directory.  Download from GitHub repository.  Exiting..."
-                exit 1
-            fi
-            warn_if_script_is_not_latest crunchy_gather.py https://raw.githubusercontent.com/ibm-apiconnect/v10-postmortem/master/crunchy_gather.py
-            chmod +x $SCRIPT_LOCATION
             ;;
         *"--collect-edb"*)
             COLLECT_EDB=1
-
             is_kubectl_cnp_plugin
-
-            SCRIPT_LOCATION="`pwd`/edb_mustgather.sh"
-            if [[ ! -f $SCRIPT_LOCATION ]]; then
-                echo -e "Unable to locate script [edb_mustgather.sh] in current directory.  Download from GitHub repository.  Exiting..."
-                exit 1
-            fi
-            warn_if_script_is_not_latest edb_mustgather.sh https://raw.githubusercontent.com/ibm-apiconnect/v10-postmortem/master/edb_mustgather.sh
-            chmod +x $SCRIPT_LOCATION
             ;;
         *"--version"*)
             print_postmortem_version
@@ -261,15 +245,9 @@ if [[ $NOT_DIAG_MANAGER -eq 0 ]]; then
     EDB_CLUSTER_NAME=$($KUBECTL get cluster --all-namespaces -o=jsonpath='{.items[0].metadata.name}' 2>/dev/null)
     if [[ -z "$EDB_CLUSTER_NAME" ]]; then
         COLLECT_CRUNCHY=1
-        SCRIPT_LOCATION="`pwd`/crunchy_gather.py"
     else
         COLLECT_EDB=1
         is_kubectl_cnp_plugin
-        SCRIPT_LOCATION="`pwd`/edb_mustgather.sh"
-    fi
-    if [[ ! -f $SCRIPT_LOCATION ]]; then
-        echo -e "Unable to locate script ${SCRIPT_LOCATION} in current directory.  Download from GitHub repository.  Exiting..."
-        exit 1
     fi
 fi
 
@@ -2350,6 +2328,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
 
             PG_BACKREST_REPO_POD=$($KUBECTL -n "$NAMESPACE" get po -lpgo-backrest-repo=true,vendor=crunchydata -o=custom-columns=NAME:.metadata.name --no-headers)
             if [[ $NOT_DIAG_MANAGER -eq 0 && $COLLECT_CRUNCHY -eq 1 && "$status" == "Running" && "$pod" == "$PG_BACKREST_REPO_POD" ]]; then
+                echo "Collecting manager diagnostic data..."
                 target_dir="${K8S_NAMESPACES_POD_DIAGNOSTIC_DATA}/postgres/${pod}"
                 mkdir -p "$target_dir"
 
