@@ -498,7 +498,7 @@ class Options():  # pylint: disable=too-few-public-methods
         self.pg_logs_count = pg_logs_count
         self.delete_dir = False
         self.output_dir = ""
-        self.dir_name = (f"crunchy_k8s_support_dump_{time.strftime('%a-%Y-%m-%d-%H%M%S%z')}")
+        self.dir_name = (f"crunchy_{time.strftime('%Y-%m-%d-%H%M%S')}")
 
 
 OPT = Options("", "", "kubectl", 2)
