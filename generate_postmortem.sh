@@ -431,7 +431,7 @@ function collectEDB {
 }
 
 function collectCrunchy {
-  python3 - << EOF -n $NAMESPACE -l 5 -c $KUBECTL -o $K8S_NAMESPACES_CRUNCHY_DATA &> "${K8S_NAMESPACES_CRUNCHY_DATA}/crunchy-collect.log"
+  python3 - << EOF -n $NAMESPACE -l 7 -c $KUBECTL -o $K8S_NAMESPACES_CRUNCHY_DATA &> "${K8S_NAMESPACES_CRUNCHY_DATA}/crunchy-collect.log"
 """
 Copyright 2017 - 2021 Crunchy Data
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -2233,17 +2233,12 @@ for NAMESPACE in $NAMESPACE_LIST; do
             #grab postgres data
             if [[ $NOT_DIAG_MANAGER -eq 0 && $COLLECT_CRUNCHY -eq 1 && "$status" == "Running" && "$pod" == *"postgres"* && ! "$pod" =~ (backrest|pgbouncer|stanza|operator|backup) ]]; then
                 echo "Collecting manager diagnostic data..."
-                target_dir="${K8S_NAMESPACES_POD_DIAGNOSTIC_DATA}/postgres/${pod}-pglogs"
                 health_dir="${K8S_NAMESPACES_POD_DIAGNOSTIC_DATA}/postgres/${pod}-health-stats"
 
-                mkdir -p $target_dir
                 mkdir -p $health_dir
 
                 POSTGRES_PGLOGS_NAME=`$KUBECTL exec -n $NAMESPACE ${pod} -- ls -1 /pgdata 2>"/dev/null" | grep -v lost 2>"/dev/null"`
                 POSTGRES_PGWAL_NAME=`$KUBECTL exec -n $NAMESPACE ${pod} -- ls -1 /pgwal 2>"/dev/null" | grep -v lost 2>"/dev/null"`
-
-                #pglogs
-                $KUBECTL cp -n $NAMESPACE "${pod}:/pgdata/${POSTGRES_PGLOGS_NAME}/pglogs" $target_dir &>/dev/null
 
                 #df
                 DB_DF_OUTPUT=`$KUBECTL exec -n $NAMESPACE ${pod} -c database -- df -h 2>"/dev/null"`
