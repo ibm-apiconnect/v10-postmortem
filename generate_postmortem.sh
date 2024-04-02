@@ -106,7 +106,6 @@ for switch in $@; do
             echo -e "--no-history:              Do not collect user history."
             echo -e ""
             echo -e "--ova:                     Only set if running inside an OVA deployment."
-            echo -e "--pull-appliance-logs:     Call [apic logs] command then package into archive file."
             echo -e ""
             echo -e "--collect-private-keys:    Include "tls.key" members in TLS secrets from targeted namespaces.  Due to sensitivity of data, do not use unless requested by support."
             echo -e "--collect-crunchy:         Collect Crunchy mustgather."
@@ -136,6 +135,7 @@ for switch in $@; do
 
             IS_OVA=1
             NO_PROMPT=1
+            PULL_APPLIANCE_LOGS=1
             NAMESPACE_LIST="kube-system"
             ;;
         *"--no-diagnostic"*)
@@ -173,9 +173,6 @@ for switch in $@; do
             NO_PROMPT=1
             extra_namespaces=`echo "${switch}" | cut -d'=' -f2 | tr ',' ' '`
             NAMESPACE_LIST="kube-system ${extra_namespaces}"
-            ;;
-        *"--pull-appliance-logs"*)
-            PULL_APPLIANCE_LOGS=1
             ;;
         *"--performance-check"*)
             PERFORMANCE_CHECK=1
