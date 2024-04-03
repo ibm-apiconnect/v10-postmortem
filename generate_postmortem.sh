@@ -132,10 +132,8 @@ for switch in $@; do
                 echo "This script must be run as root."
                 exit 1
             fi
-
             IS_OVA=1
             NO_PROMPT=1
-            PULL_APPLIANCE_LOGS=1
             NAMESPACE_LIST="kube-system"
             ;;
         *"--no-diagnostic"*)
@@ -431,10 +429,9 @@ if [[ $IS_OVA -eq 1 ]]; then
     df -kh | egrep -v 'kubelet|docker' 1>>"${OVA_DATA}/disk_data.out" 2>/dev/null
 
     #pull appliance logs
-    if [[ $PULL_APPLIANCE_LOGS -eq 1 ]]; then
-        cd $OVA_DATA
-        sudo apic logs &>/dev/null
-    fi
+    
+    cd $OVA_DATA
+    sudo apic logs &>/dev/null
 
     #pull files from var/log
     cp -r --parents /var/log/containers "${OVA_FILESYSTEM}"
