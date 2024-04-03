@@ -132,7 +132,7 @@ for switch in $@; do
                 echo "This script must be run as root."
                 exit 1
             fi
-            
+
             IS_OVA=1
             NO_PROMPT=1
             NAMESPACE_LIST="kube-system"
@@ -429,7 +429,7 @@ if [[ $IS_OVA -eq 1 ]]; then
     echo -e "\n>df -kh | egrep -v 'kubelet|docker'" 1>>"${OVA_DATA}/disk_data.out" 2>/dev/null
     df -kh | egrep -v 'kubelet|docker' 1>>"${OVA_DATA}/disk_data.out" 2>/dev/null
 
-    #pull appliance logs    
+    #pull appliance logs
     cd $OVA_DATA
     sudo apic logs &>/dev/null
 
@@ -1506,7 +1506,7 @@ for NAMESPACE in $NAMESPACE_LIST; do
                 target_dir="${K8S_NAMESPACES_POD_DIAGNOSTIC_DATA}/postgres/${pod}"
                 mkdir -p "$target_dir"
 
-                pg_cluster=$(kubectl get pgcluster -o=custom-columns=NAME:.metadata.name --no-headers)
+                pg_cluster=$($KUBECTL -n "$NAMESPACE" get pgcluster -o=custom-columns=NAME:.metadata.name --no-headers)
 
                 COMMAND1="pgbackrest info"
                 COMMAND2="du -ksh /backrestrepo/$pg_cluster-backrest-shared-repo/backup"
