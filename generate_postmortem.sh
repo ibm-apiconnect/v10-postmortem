@@ -132,6 +132,7 @@ for switch in $@; do
                 echo "This script must be run as root."
                 exit 1
             fi
+            
             IS_OVA=1
             NO_PROMPT=1
             NAMESPACE_LIST="kube-system"
