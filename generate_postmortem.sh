@@ -429,8 +429,7 @@ if [[ $IS_OVA -eq 1 ]]; then
     echo -e "\n>df -kh | egrep -v 'kubelet|docker'" 1>>"${OVA_DATA}/disk_data.out" 2>/dev/null
     df -kh | egrep -v 'kubelet|docker' 1>>"${OVA_DATA}/disk_data.out" 2>/dev/null
 
-    #pull appliance logs
-    
+    #pull appliance logs    
     cd $OVA_DATA
     sudo apic logs &>/dev/null
 
