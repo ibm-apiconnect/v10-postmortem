@@ -1,69 +1,34 @@
-# v10-postmortem
-With the move to API Connect v10, **helm** is not longer used as part of the deployment process.
+# v10-postmortem tool: apic-mustgather
 
+> [!NOTE]  
+> We are transitioning to the **`apic-mustgather`** tool presented in this page. 
+> The `generate_postmortem.sh` and related scripts are deprecated but still available at this time, see [deprecated README](README_deprecated.md)
 
-## Notes
-- For usage information with the tool, use the command `./generate_postmortem.sh --help`
-- The namespace is now automatically detected.  If the namespace is not correctly detected, use the switch `--extra-namespaces` to set the correct value.  For example `--extra-namespaces=apiconnect`.
-- While the postmortem collection script is running, it is expected that the CPU and I/O load for the APIC deployment and its host cluster/VM will be increased. 
+## Pre-Requisites
 
-## Pre-Requisite
-- If EDB is deployed you will need the kubectl-cnp [plugin](https://www.enterprisedb.com/docs/postgres_for_kubernetes/latest/kubectl-plugin) to gather appropriate EDB logs
+- **Python3 v3.6 or later**
+- **kubectl** or **oc** must be available on PATH. Alternatively location may be specified with `--kube-cli` argument.
+- The **kubectl-cnp** plugin should be pre-installed if EDB is deployed. If not present, user will be prompted to allow an attempt to set it up.
+- **apicops** should be present on PATH if apicops output is to be included. If not present, user will be prompted to allow an attempt to download the latest version.
+
+> Note: on all APIConnect VMware Appliances, all the above pre-requisites are satisfied, except for `apicops`.
 
 ## Deployment Instructions
-### OVA
-1. Connect to the target appliance via SSH then switch to the _root user_ using the following commands:
+
+1.  Download the tool using the following command:
 ```shell
-ssh {ova appliance hostname} -l apicadm
-sudo -i
+curl -L -O https://github.com/ibm-apiconnect/v10-postmortem/releases/latest/download/apic-mustgather
 ```
-2.  Download the script using the following command:
-```shell
-curl -s -o generate_postmortem.sh https://raw.githubusercontent.com/ibm-apiconnect/v10-postmortem/master/generate_postmortem.sh
-```
-3.  Add execution permissions to file using the command `chmod +x generate_postmortem.sh`.
-4.  Run the tool using the command `./generate_postmortem.sh --ova`.
+2.  Add execution permissions to file using the command `chmod +x apic-mustgather`.
+3.  Run the tool using the command **`./apic-mustgather`**.
 
-### Cloud Pak 4i, Kubernetes, OpenShift
-1.  Download the script using the following command:
-```shell
-curl -s -o generate_postmortem.sh https://raw.githubusercontent.com/ibm-apiconnect/v10-postmortem/master/generate_postmortem.sh
-```
-2.  Add execution permissions to file using the command `chmod +x generate_postmortem.sh`.
-3.  Run the tool using the command `./generate_postmortem.sh`.
+> Note: Only for APIC Appliances/OVA, first connect to the target appliance via SSH then switch to the _root user_ by running the command `sudo -i`.
 
-
-## Working a specific subsystem issue?
-Enable the following if troubleshooting an issue for the following subsystems:  
-> **Note**: Enabling diagnostics may cause the script to take much longer to complete (especially over a VPN connection).
-### All (if requested by support)
-- `--diagnostic-all`
-### Manager
-- `--diagnostic-manager`
-- `--collect-crunchy`<br />
-- `--collect-edb`<br />
-### Gateway
-`--diagnostic-gateway`
-> **Note**: In order for this switch to function, make sure connections to `127.0.0.1` are not restricted on the local machine.
-### Portal
-`--diagnostic-portal`
-### Analytics
-`--diagnostic-analytics`
-
-### Running EDB Mustgather on it's own   
-To run the edb mustgather you need to pass the script 2 values:   
-`EDB_CLUSTER_NAMESPACE`: the namespace where the edb cluster is running (eg apic)  
-`LOG_PATH`: An **existing** folder in which you want to store the mustgather logs
-Example of how to run the edb mustgather script
-```
-    ./edb_mustgather.sh apic edb
-```
+## Notes
+- For usage information with the tool, use the command `./apic-mustgather --help`
+- While the postmortem collection tool is running, it is expected that the CPU and I/O load for the APIC deployment and its host cluster/VM will be increased.
+- To reduce load on the host cluster/VM, the argument `--sequential` can be used, with the tradeof that log collection will be slower.
 
 ## Need help?
 -  Open a ticket with IBM Support in the IBM API Connect product
 -  If you do not have access to IBM Support, report an issue to submit any feedback
--  Problem with the script?  Run the following command:
-```shell
-./generate_postmortem.sh --debug 2>&1 | tee /tmp/debug.log
-```
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;then open an issue on the github page attaching the `debug.log` file.
