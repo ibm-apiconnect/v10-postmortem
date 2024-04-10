@@ -207,6 +207,10 @@ for switch in $@; do
     esac
 done
 
+echo -e "#\n# WARNING: this script is being deprecated in favor of the apic-mustgather tool."
+echo -e "# Please see: https://github.com/ibm-apiconnect/v10-postmortem"
+echo -e "#"
+
 #Printing Postmortem Version
 print_postmortem_version
 echo "using [$KUBECTL] command for cluster cli"
