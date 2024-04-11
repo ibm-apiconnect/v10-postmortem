@@ -8,7 +8,7 @@
 
 - **Python3 v3.6 or later**
 - **kubectl** or **oc** must be available on PATH. Alternatively location may be specified with `--kube-cli` argument.
-- The **kubectl-cnp** plugin should be pre-installed if EDB is deployed. If not present, user will be prompted to allow an attempt to set it up.
+- For APIC 10.0.7.0 and later Management instances, the kubectl-cnp plugin should be pre-installed to collect EDB logs. If it is not present, the user will be prompted to allow download and setup of the plugin. Use the flag `--no-edb` to skip the check for this plugin and skip the associated EDB log collection.
 - **apicops** should be present on PATH if apicops output is to be included. If not present, user will be prompted to allow an attempt to download the latest version.
 
 > Note: on all APIConnect VMware Appliances, all the above pre-requisites are satisfied, except for `apicops`.
